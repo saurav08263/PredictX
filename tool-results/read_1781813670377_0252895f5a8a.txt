@@ -1,0 +1,780 @@
+     1→     1→"use client"
+     2→     2→
+     3→     3→import Image from "next/image"
+     4→     4→import { useState } from "react"
+     5→     5→import { motion, AnimatePresence } from "framer-motion"
+     6→     6→import {
+     7→     7→  ChevronRight,
+     8→     8→  Trophy,
+     9→     9→  Gift,
+    10→    10→  Bell,
+    11→    11→  Shield,
+    12→    12→  HelpCircle,
+    13→    13→  LogOut,
+    14→    14→  Crown,
+    15→    15→  Flame,
+    16→    16→  Target,
+    17→    17→  TrendingUp,
+    18→    18→  Zap,
+    19→    19→  Check,
+    20→    20→  Loader2,
+    21→    21→  X,
+    22→    22→  Copy,
+    23→    23→  Star,
+    24→    24→  Medal,
+    25→    25→  Award,
+    26→    26→  Lock,
+    27→    27→  MessageSquare,
+    28→    28→  Mail,
+    29→    29→  Phone,
+    30→    30→  Globe,
+    31→    31→  BellRing,
+    32→    32→} from "lucide-react"
+    33→    33→import { useCrypto } from "../store"
+    34→    34→
+    35→    35→type MenuModal = "achievements" | "refer" | "notifications" | "security" | "help" | "logout" | null
+    36→    36→
+    37→    37→const menu = [
+    38→    38→  { id: "achievements" as const, icon: Trophy, label: "My Achievements" },
+    39→    39→  { id: "refer" as const, icon: Gift, label: "Refer & Earn" },
+    40→    40→  { id: "notifications" as const, icon: Bell, label: "Notifications" },
+    41→    41→  { id: "security" as const, icon: Shield, label: "Security & KYC" },
+    42→    42→  { id: "help" as const, icon: HelpCircle, label: "Help & Support" },
+    43→    43→]
+    44→    44→
+    45→    45→export function ProfileScreen() {
+    46→    46→  const {
+    47→    47→    wins,
+    48→    48→    totalBets,
+    49→    49→    winRate,
+    50→    50→    fmt,
+    51→    51→    profit,
+    52→    52→    winnings,
+    53→    53→    balance,
+    54→    54→    userName,
+    55→    55→    userId,
+    56→    56→    tier,
+    57→    57→    dailyPredictions,
+    58→    58→    dailyLimit,
+    59→    59→    premiumExpiresAt,
+    60→    60→    activatePremium,
+    61→    61→    cancelPremium,
+    62→    62→    logout,
+    63→    63→    authMethod,
+    64→    64→    email,
+    65→    65→    phone,
+    66→    66→  } = useCrypto() as any
+    67→    67→  const [showPremiumModal, setShowPremiumModal] = useState(false)
+    68→    68→  const [premiumLoading, setPremiumLoading] = useState(false)
+    69→    69→  const [activeModal, setActiveModal] = useState<MenuModal>(null)
+    70→    70→  const [logoutLoading, setLogoutLoading] = useState(false)
+    71→    71→
+    72→    72→  const isPremium = tier === "PREMIUM"
+    73→    73→  const remainingToday = dailyLimit === -1 ? "∞" : `${Math.max(0, dailyLimit - dailyPredictions)}/${dailyLimit}`
+    74→    74→
+    75→    75→  const handleActivatePremium = async (plan: "monthly" | "yearly") => {
+    76→    76→    setPremiumLoading(true)
+    77→    77→    await activatePremium(plan)
+    78→    78→    setPremiumLoading(false)
+    79→    79→    setShowPremiumModal(false)
+    80→    80→  }
+    81→    81→
+    82→    82→  const handleLogout = async () => {
+    83→    83→    setLogoutLoading(true)
+    84→    84→    await logout()
+    85→    85→    setLogoutLoading(false)
+    86→    86→  }
+    87→    87→
+    88→    88→  return (
+    89→    89→    <motion.div
+    90→    90→      className="flex flex-col gap-4 px-4 pb-4 pt-3"
+    91→    91→      initial={{ opacity: 0 }}
+    92→    92→      animate={{ opacity: 1 }}
+    93→    93→      transition={{ duration: 0.3 }}
+    94→    94→    >
+    95→    95→      {/* Profile header */}
+    96→    96→      <div className="flex flex-col items-center rounded-2xl border border-gold/30 bg-card p-5 text-center">
+    97→    97→        <motion.span
+    98→    98→          className="relative overflow-hidden rounded-full border-2 border-gold glow-gold"
+    99→    99→          initial={{ scale: 0.8, opacity: 0 }}
+   100→   100→          animate={{ scale: 1, opacity: 1 }}
+   101→   101→          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+   102→   102→        >
+   103→   103→          <Image src="/images/winner-1.png" alt="Your avatar" width={80} height={80} className="size-20 object-cover" />
+   104→   104→          {isPremium && (
+   105→   105→            <span className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-gold text-black">
+   106→   106→              <Crown className="size-3.5" />
+   107→   107→            </span>
+   108→   108→          )}
+   109→   109→        </motion.span>
+   110→   110→        <motion.h2
+   111→   111→          className="mt-3 flex items-center gap-1.5 text-lg font-extrabold"
+   112→   112→          initial={{ y: 10, opacity: 0 }}
+   113→   113→          animate={{ y: 0, opacity: 1 }}
+   114→   114→          transition={{ delay: 0.1 }}
+   115→   115→        >
+   116→   116→          {userName}
+   117→   117→          {isPremium && <Crown className="size-4 text-gold" />}
+   118→   118→        </motion.h2>
+   119→   119→        <motion.p
+   120→   120→          className="text-xs text-muted-foreground"
+   121→   121→          initial={{ opacity: 0 }}
+   122→   122→          animate={{ opacity: 1 }}
+   123→   123→          transition={{ delay: 0.2 }}
+   124→   124→        >
+   125→   125→          ID: {userId?.slice(0, 8)}...
+   126→   126→        </motion.p>
+   127→   127→
+   128→   128→        {/* Tier badge */}
+   129→   129→        <motion.div
+   130→   130→          initial={{ opacity: 0, y: 10 }}
+   131→   131→          animate={{ opacity: 1, y: 0 }}
+   132→   132→          transition={{ delay: 0.25 }}
+   133→   133→          className={`mt-2 flex items-center gap-1.5 rounded-full px-3 py-1 ${
+   134→   134→            isPremium ? "bg-gold/20 text-gold" : "bg-muted text-muted-foreground"
+   135→   135→          }`}
+   136→   136→        >
+   137→   137→          {isPremium ? <Zap className="size-3" /> : <Target className="size-3" />}
+   138→   138→          <span className="text-[10px] font-bold">{isPremium ? "PREMIUM" : "FREE TIER"}</span>
+   139→   139→          {!isPremium && (
+   140→   140→            <span className="text-[10px]">· {remainingToday} today</span>
+   141→   141→          )}
+   142→   142→        </motion.div>
+   143→   143→
+   144→   144→        {/* Stats grid */}
+   145→   145→        <motion.div
+   146→   146→          className="mt-4 grid w-full grid-cols-3 gap-2 border-t border-border pt-4"
+   147→   147→          initial={{ y: 10, opacity: 0 }}
+   148→   148→          animate={{ y: 0, opacity: 1 }}
+   149→   149→          transition={{ delay: 0.3 }}
+   150→   150→        >
+   151→   151→          <div>
+   152→   152→            <p className="text-lg font-bold text-bull">{wins}</p>
+   153→   153→            <p className="text-[10px] text-muted-foreground">WINS</p>
+   154→   154→          </div>
+   155→   155→          <div>
+   156→   156→            <p className="text-lg font-bold">{totalBets}</p>
+   157→   157→            <p className="text-[10px] text-muted-foreground">TOTAL BETS</p>
+   158→   158→          </div>
+   159→   159→          <div>
+   160→   160→            <p className="text-lg font-bold text-gold">{winRate}%</p>
+   161→   161→            <p className="text-[10px] text-muted-foreground">WIN RATE</p>
+   162→   162→          </div>
+   163→   163→        </motion.div>
+   164→   164→
+   165→   165→        {/* Profit card */}
+   166→   166→        <motion.div
+   167→   167→          className="mt-3 grid w-full grid-cols-2 gap-2"
+   168→   168→          initial={{ y: 10, opacity: 0 }}
+   169→   169→          animate={{ y: 0, opacity: 1 }}
+   170→   170→          transition={{ delay: 0.4 }}
+   171→   171→        >
+   172→   172→          <div className="flex items-center gap-2 rounded-lg border border-bull/20 bg-bull/5 px-3 py-2">
+   173→   173→            <TrendingUp className="size-4 text-bull" />
+   174→   174→            <div className="text-left">
+   175→   175→              <p className="text-sm font-bold text-bull">{fmt(profit)}</p>
+   176→   176→              <p className="text-[9px] text-muted-foreground">PROFIT</p>
+   177→   177→            </div>
+   178→   178→          </div>
+   179→   179→          <div className="flex items-center gap-2 rounded-lg border border-gold/20 bg-gold/5 px-3 py-2">
+   180→   180→            <Target className="size-4 text-gold" />
+   181→   181→            <div className="text-left">
+   182→   182→              <p className="text-sm font-bold">{fmt(winnings)}</p>
+   183→   183→              <p className="text-[9px] text-muted-foreground">WINNINGS</p>
+   184→   184→            </div>
+   185→   185→          </div>
+   186→   186→        </motion.div>
+   187→   187→      </div>
+   188→   188→
+   189→   189→      {/* Premium Card */}
+   190→   190→      {!isPremium ? (
+   191→   191→        <motion.div
+   192→   192→          className="overflow-hidden rounded-2xl border border-gold/40 bg-gradient-to-br from-gold/10 via-card to-card"
+   193→   193→          initial={{ y: 10, opacity: 0 }}
+   194→   194→          animate={{ y: 0, opacity: 1 }}
+   195→   195→          transition={{ delay: 0.45 }}
+   196→   196→        >
+   197→   197→          <div className="p-4">
+   198→   198→            <div className="mb-3 flex items-center gap-2">
+   199→   199→              <Crown className="size-5 text-gold" />
+   200→   200→              <h2 className="font-bold tracking-wide text-gold">UPGRADE TO PREMIUM</h2>
+   201→   201→            </div>
+   202→   202→            <div className="space-y-2 mb-4">
+   203→   203→              <PremiumFeature icon={<Zap className="size-3.5 text-gold" />} text="Unlimited daily predictions" />
+   204→   204→              <PremiumFeature icon={<Crown className="size-3.5 text-gold" />} text="No ads ever" />
+   205→   205→              <PremiumFeature icon={<Trophy className="size-3.5 text-gold" />} text="Priority round access" />
+   206→   206→              <PremiumFeature icon={<TrendingUp className="size-3.5 text-gold" />} text="Advanced AI insights" />
+   207→   207→            </div>
+   208→   208→            <motion.button
+   209→   209→              onClick={() => setShowPremiumModal(true)}
+   210→   210→              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gold py-3 text-sm font-bold text-black"
+   211→   211→              whileTap={{ scale: 0.97 }}
+   212→   212→            >
+   213→   213→              <Crown className="size-4" /> UPGRADE NOW
+   214→   214→            </motion.button>
+   215→   215→            <p className="mt-2 text-center text-[9px] text-muted-foreground">Starting at $9.99/mo · Cancel anytime</p>
+   216→   216→          </div>
+   217→   217→        </motion.div>
+   218→   218→      ) : (
+   219→   219→        <motion.div
+   220→   220→          className="overflow-hidden rounded-2xl border border-gold/40 bg-gradient-to-br from-gold/10 via-card to-card"
+   221→   221→          initial={{ y: 10, opacity: 0 }}
+   222→   222→          animate={{ y: 0, opacity: 1 }}
+   223→   223→          transition={{ delay: 0.45 }}
+   224→   224→        >
+   225→   225→          <div className="p-4">
+   226→   226→            <div className="mb-2 flex items-center gap-2">
+   227→   227→              <Crown className="size-5 text-gold" />
+   228→   228→              <h2 className="font-bold tracking-wide text-gold">PREMIUM ACTIVE</h2>
+   229→   229→            </div>
+   230→   230→            {premiumExpiresAt && (
+   231→   231→              <p className="text-xs text-muted-foreground">
+   232→   232→                Expires: {new Date(premiumExpiresAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+   233→   233→              </p>
+   234→   234→            )}
+   235→   235→            <div className="mt-3 space-y-2">
+   236→   236→              <PremiumFeature icon={<Check className="size-3.5 text-bull" />} text="Unlimited predictions ✓" />
+   237→   237→              <PremiumFeature icon={<Check className="size-3.5 text-bull" />} text="No ads ✓" />
+   238→   238→              <PremiumFeature icon={<Check className="size-3.5 text-bull" />} text="Priority access ✓" />
+   239→   239→            </div>
+   240→   240→            <motion.button
+   241→   241→              onClick={cancelPremium}
+   242→   242→              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card py-2.5 text-xs font-semibold text-muted-foreground"
+   243→   243→              whileTap={{ scale: 0.97 }}
+   244→   244→            >
+   245→   245→              Cancel Subscription
+   246→   246→            </motion.button>
+   247→   247→          </div>
+   248→   248→        </motion.div>
+   249→   249→      )}
+   250→   250→
+   251→   251→      {/* Performance card */}
+   252→   252→      <motion.div
+   253→   253→        className="rounded-2xl border border-border bg-card p-4"
+   254→   254→        initial={{ y: 10, opacity: 0 }}
+   255→   255→        animate={{ y: 0, opacity: 1 }}
+   256→   256→        transition={{ delay: 0.5 }}
+   257→   257→      >
+   258→   258→        <div className="mb-3 flex items-center gap-2">
+   259→   259→          <Target className="size-5 text-bull" />
+   260→   260→          <h2 className="font-bold tracking-wide">PERFORMANCE</h2>
+   261→   261→        </div>
+   262→   262→        <div className="grid grid-cols-2 gap-3">
+   263→   263→          <div className="rounded-xl border border-border bg-panel p-3 text-center">
+   264→   264→            <p className="text-lg font-bold text-bull">{fmt(winnings)}</p>
+   265→   265→            <p className="text-[10px] text-muted-foreground">TOTAL WINNINGS</p>
+   266→   266→          </div>
+   267→   267→          <div className="rounded-xl border border-border bg-panel p-3 text-center">
+   268→   268→            <p className="text-lg font-bold">{fmt(balance, 2)}</p>
+   269→   269→            <p className="text-[10px] text-muted-foreground">CURRENT BALANCE</p>
+   270→   270→          </div>
+   271→   271→        </div>
+   272→   272→        {/* Win rate bar */}
+   273→   273→        <div className="mt-3">
+   274→   274→          <div className="mb-1 flex items-center justify-between text-[10px]">
+   275→   275→            <span className="font-semibold text-muted-foreground">WIN RATE</span>
+   276→   276→            <span className="font-bold text-bull">{winRate}%</span>
+   277→   277→          </div>
+   278→   278→          <div className="h-2 overflow-hidden rounded-full bg-muted">
+   279→   279→            <motion.div
+   280→   280→              className="h-full rounded-full bg-bull"
+   281→   281→              initial={{ width: 0 }}
+   282→   282→              animate={{ width: `${winRate}%` }}
+   283→   283→              transition={{ duration: 1, delay: 0.6, ease: "easeOut" }}
+   284→   284→            />
+   285→   285→          </div>
+   286→   286→        </div>
+   287→   287→      </motion.div>
+   288→   288→
+   289→   289→      {/* Menu */}
+   290→   290→      <motion.div
+   291→   291→        className="overflow-hidden rounded-2xl border border-border bg-card"
+   292→   292→        initial={{ y: 10, opacity: 0 }}
+   293→   293→        animate={{ y: 0, opacity: 1 }}
+   294→   294→        transition={{ delay: 0.6 }}
+   295→   295→      >
+   296→   296→        {menu.map((m, i) => (
+   297→   297→          <button
+   298→   298→            key={m.label}
+   299→   299→            onClick={() => setActiveModal(m.id)}
+   300→   300→            className={`flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm font-semibold transition active:bg-muted/50 ${
+   301→   301→              i !== menu.length - 1 ? "border-b border-border/60" : ""
+   302→   302→            }`}
+   303→   303→          >
+   304→   304→            <m.icon className="size-5 text-muted-foreground" />
+   305→   305→            <span className="flex-1">{m.label}</span>
+   306→   306→            <ChevronRight className="size-4 text-muted-foreground" />
+   307→   307→          </button>
+   308→   308→        ))}
+   309→   309→      </motion.div>
+   310→   310→
+   311→   311→      <motion.button
+   312→   312→        onClick={handleLogout}
+   313→   313→        disabled={logoutLoading}
+   314→   314→        className="flex items-center justify-center gap-2 rounded-2xl border border-bear/40 bg-bear/10 py-3.5 text-sm font-bold text-bear disabled:opacity-60"
+   315→   315→        whileTap={{ scale: 0.97 }}
+   316→   316→        initial={{ opacity: 0 }}
+   317→   317→        animate={{ opacity: 1 }}
+   318→   318→        transition={{ delay: 0.7 }}
+   319→   319→      >
+   320→   320→        {logoutLoading ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
+   321→   321→        LOG OUT
+   322→   322→      </motion.button>
+   323→   323→
+   324→   324→      {/* Premium Purchase Modal */}
+   325→   325→      <AnimatePresence>
+   326→   326→        {showPremiumModal && (
+   327→   327→          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={() => setShowPremiumModal(false)}>
+   328→   328→            <motion.div
+   329→   329→              className="mx-auto w-full max-w-sm overflow-hidden rounded-2xl border border-gold/40 bg-panel"
+   330→   330→              onClick={(e) => e.stopPropagation()}
+   331→   331→              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+   332→   332→              animate={{ opacity: 1, scale: 1, y: 0 }}
+   333→   333→              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+   334→   334→              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+   335→   335→            >
+   336→   336→              <div className="relative bg-gradient-to-br from-gold/20 via-gold/10 to-transparent p-6 text-center">
+   337→   337→                <motion.div
+   338→   338→                  initial={{ scale: 0 }}
+   339→   339→                  animate={{ scale: 1 }}
+   340→   340→                  transition={{ type: "spring", delay: 0.1 }}
+   341→   341→                  className="mx-auto flex size-16 items-center justify-center rounded-full bg-gold/20"
+   342→   342→                >
+   343→   343→                  <Crown className="size-8 text-gold" />
+   344→   344→                </motion.div>
+   345→   345→                <h3 className="mt-3 text-xl font-extrabold text-gold">GO PREMIUM</h3>
+   346→   346→                <p className="mt-1 text-xs text-muted-foreground">Unlock unlimited predictions & more</p>
+   347→   347→              </div>
+   348→   348→
+   349→   349→              <div className="p-4 space-y-3">
+   350→   350→                <PremiumFeature icon={<Zap className="size-4 text-gold" />} text="Unlimited daily predictions" />
+   351→   351→                <PremiumFeature icon={<Crown className="size-4 text-gold" />} text="Ad-free experience" />
+   352→   352→                <PremiumFeature icon={<Trophy className="size-4 text-gold" />} text="Priority round access" />
+   353→   353→                <PremiumFeature icon={<TrendingUp className="size-4 text-gold" />} text="Advanced AI market insights" />
+   354→   354→                <PremiumFeature icon={<Flame className="size-4 text-gold" />} text="1.8x payout multiplier" />
+   355→   355→              </div>
+   356→   356→
+   357→   357→              <div className="px-4 pb-2 space-y-2">
+   358→   358→                <motion.button
+   359→   359→                  onClick={() => handleActivatePremium("monthly")}
+   360→   360→                  disabled={premiumLoading}
+   361→   361→                  className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3.5 transition disabled:opacity-60"
+   362→   362→                  whileTap={{ scale: 0.97 }}
+   363→   363→                >
+   364→   364→                  <div>
+   365→   365→                    <p className="font-bold">Monthly</p>
+   366→   366→                    <p className="text-xs text-muted-foreground">Cancel anytime</p>
+   367→   367→                  </div>
+   368→   368→                  <div className="flex items-center gap-2">
+   369→   369→                    <span className="text-lg font-extrabold text-bull">$9.99/mo</span>
+   370→   370→                    {premiumLoading && <Loader2 className="size-4 animate-spin text-gold" />}
+   371→   371→                  </div>
+   372→   372→                </motion.button>
+   373→   373→                <motion.button
+   374→   374→                  onClick={() => handleActivatePremium("yearly")}
+   375→   375→                  disabled={premiumLoading}
+   376→   376→                  className="relative flex w-full items-center justify-between rounded-xl border border-gold/50 bg-gold/10 px-4 py-3.5 transition disabled:opacity-60"
+   377→   377→                  whileTap={{ scale: 0.97 }}
+   378→   378→                >
+   379→   379→                  <span className="absolute -top-2 right-3 rounded-md bg-gold px-2 py-0.5 text-[9px] font-bold text-black">SAVE 33%</span>
+   380→   380→                  <div>
+   381→   381→                    <p className="font-bold">Yearly</p>
+   382→   382→                    <p className="text-xs text-muted-foreground">Best value · $6.67/mo</p>
+   383→   383→                  </div>
+   384→   384→                  <div className="flex items-center gap-2">
+   385→   385→                    <span className="text-lg font-extrabold text-bull">$79.99/yr</span>
+   386→   386→                    {premiumLoading && <Loader2 className="size-4 animate-spin text-gold" />}
+   387→   387→                  </div>
+   388→   388→                </motion.button>
+   389→   389→              </div>
+   390→   390→
+   391→   391→              <div className="p-4 pt-2 text-center">
+   392→   392→                <button
+   393→   393→                  onClick={() => setShowPremiumModal(false)}
+   394→   394→                  className="text-xs text-muted-foreground hover:text-foreground transition"
+   395→   395→                >
+   396→   396→                  Maybe later
+   397→   397→                </button>
+   398→   398→              </div>
+   399→   399→            </motion.div>
+   400→   400→          </div>
+   401→   401→        )}
+   402→   402→      </AnimatePresence>
+   403→   403→
+   404→   404→      {/* Menu modals */}
+   405→   405→      <AnimatePresence>
+   406→   406→        {activeModal && (
+   407→   407→          <MenuModalWrapper
+   408→   408→            onClose={() => setActiveModal(null)}
+   409→   409→            modal={activeModal}
+   410→   410→            userName={userName}
+   411→   411→            userId={userId}
+   412→   412→            wins={wins}
+   413→   413→            totalBets={totalBets}
+   414→   414→            winRate={winRate}
+   415→   415→            isPremium={isPremium}
+   416→   416→            authMethod={authMethod}
+   417→   417→            email={email}
+   418→   418→            phone={phone}
+   419→   419→          />
+   420→   420→        )}
+   421→   421→      </AnimatePresence>
+   422→   422→    </motion.div>
+   423→   423→  )
+   424→   424→}
+   425→   425→
+   426→   426→function MenuModalWrapper({
+   427→   427→  onClose,
+   428→   428→  modal,
+   429→   429→  userName,
+   430→   430→  userId,
+   431→   431→  wins,
+   432→   432→  totalBets,
+   433→   433→  winRate,
+   434→   434→  isPremium,
+   435→   435→  authMethod,
+   436→   436→  email,
+   437→   437→  phone,
+   438→   438→}: {
+   439→   439→  onClose: () => void
+   440→   440→  modal: Exclude<MenuModal, null>
+   441→   441→  userName: string
+   442→   442→  userId: string | null
+   443→   443→  wins: number
+   444→   444→  totalBets: number
+   445→   445→  winRate: number
+   446→   446→  isPremium: boolean
+   447→   447→  authMethod: string | null
+   448→   448→  email: string | null
+   449→   449→  phone: string | null
+   450→   450→}) {
+   451→   451→  return (
+   452→   452→    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 sm:items-center" onClick={onClose}>
+   453→   453→      <motion.div
+   454→   454→        className="mx-auto w-full max-w-md rounded-t-2xl border border-border bg-panel p-5 pb-8 sm:rounded-2xl"
+   455→   455→        onClick={(e) => e.stopPropagation()}
+   456→   456→        initial={{ y: "100%", opacity: 0 }}
+   457→   457→        animate={{ y: 0, opacity: 1 }}
+   458→   458→        exit={{ y: "100%", opacity: 0 }}
+   459→   459→        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+   460→   460→      >
+   461→   461→        <div className="mb-4 flex items-center justify-between">
+   462→   462→          <ModalTitle modal={modal} />
+   463→   463→          <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">
+   464→   464→            <X className="size-5" />
+   465→   465→          </button>
+   466→   466→        </div>
+   467→   467→        <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
+   468→   468→          {modal === "achievements" && <AchievementsContent wins={wins} totalBets={totalBets} winRate={winRate} isPremium={isPremium} />}
+   469→   469→          {modal === "refer" && <ReferContent userName={userName} userId={userId} />}
+   470→   470→          {modal === "notifications" && <NotificationsContent />}
+   471→   471→          {modal === "security" && <SecurityContent authMethod={authMethod} email={email} phone={phone} isPremium={isPremium} />}
+   472→   472→          {modal === "help" && <HelpContent />}
+   473→   473→        </div>
+   474→   474→      </motion.div>
+   475→   475→    </div>
+   476→   476→  )
+   477→   477→}
+   478→   478→
+   479→   479→function ModalTitle({ modal }: { modal: Exclude<MenuModal, null> }) {
+   480→   480→  const map = {
+   481→   481→    achievements: { icon: Trophy, label: "Achievements" },
+   482→   482→    refer: { icon: Gift, label: "Refer & Earn" },
+   483→   483→    notifications: { icon: Bell, label: "Notifications" },
+   484→   484→    security: { icon: Shield, label: "Security & KYC" },
+   485→   485→    help: { icon: HelpCircle, label: "Help & Support" },
+   486→   486→    logout: { icon: LogOut, label: "Log Out" },
+   487→   487→  } as const
+   488→   488→  const { icon: Icon, label } = map[modal]
+   489→   489→  return (
+   490→   490→    <div className="flex items-center gap-2">
+   491→   491→      <Icon className="size-5 text-bull" />
+   492→   492→      <h3 className="font-bold tracking-wide">{label.toUpperCase()}</h3>
+   493→   493→    </div>
+   494→   494→  )
+   495→   495→}
+   496→   496→
+   497→   497→function AchievementsContent({ wins, totalBets, winRate, isPremium }: { wins: number; totalBets: number; winRate: number; isPremium: boolean }) {
+   498→   498→  const achievements = [
+   499→   499→    { icon: Medal, label: "First Win", desc: "Win your first prediction", unlocked: wins >= 1, color: "text-bull" },
+   500→   500→    { icon: Flame, label: "Hot Streak", desc: "Win 5 predictions", unlocked: wins >= 5, color: "text-gold" },
+   501→   501→    { icon: Trophy, label: "Champion", desc: "Win 25 predictions", unlocked: wins >= 25, color: "text-gold" },
+   502→   502→    { icon: Star, label: "Rising Star", desc: "Place 10 bets", unlocked: totalBets >= 10, color: "text-info" },
+   503→   503→    { icon: Award, label: "Veteran", desc: "Place 100 bets", unlocked: totalBets >= 100, color: "text-bull" },
+   504→   504→    { icon: Target, label: "Sharp Shooter", desc: "Reach 60% win rate", unlocked: winRate >= 60, color: "text-bull" },
+   505→   505→    { icon: Crown, label: "Premium Member", desc: "Upgrade to Premium", unlocked: isPremium, color: "text-gold" },
+   506→   506→    { icon: Zap, label: "High Roller", desc: "Place 500 bets", unlocked: totalBets >= 500, color: "text-gold" },
+   507→   507→  ]
+   508→   508→  return (
+   509→   509→    <div className="grid grid-cols-2 gap-3">
+   510→   510→      {achievements.map((a) => (
+   511→   511→        <div
+   512→   512→          key={a.label}
+   513→   513→          className={`rounded-xl border p-3 text-center transition ${
+   514→   514→            a.unlocked ? "border-bull/30 bg-bull/5" : "border-border bg-muted/30 opacity-60"
+   515→   515→          }`}
+   516→   516→        >
+   517→   517→          <a.icon className={`mx-auto size-7 ${a.unlocked ? a.color : "text-muted-foreground"}`} />
+   518→   518→          <p className="mt-1.5 text-xs font-bold">{a.label}</p>
+   519→   519→          <p className="mt-0.5 text-[10px] text-muted-foreground">{a.desc}</p>
+   520→   520→          {a.unlocked && (
+   521→   521→            <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-bull/20 px-2 py-0.5 text-[9px] font-bold text-bull">
+   522→   522→              <Check className="size-2.5" /> UNLOCKED
+   523→   523→            </span>
+   524→   524→          )}
+   525→   525→        </div>
+   526→   526→      ))}
+   527→   527→    </div>
+   528→   528→  )
+   529→   529→}
+   530→   530→
+   531→   531→function ReferContent({ userName, userId }: { userName: string; userId: string | null }) {
+   532→   532→  const referralCode = userId ? `CP${userId.slice(0, 6).toUpperCase()}` : "CPDEMO01"
+   533→   533→  const referralLink = `https://cryptopredictor.app/r/${referralCode}`
+   534→   534→  const [copied, setCopied] = useState(false)
+   535→   535→  const handleCopy = () => {
+   536→   536→    navigator.clipboard?.writeText(referralLink).catch(() => {})
+   537→   537→    setCopied(true)
+   538→   538→    setTimeout(() => setCopied(false), 2000)
+   539→   539→  }
+   540→   540→  return (
+   541→   541→    <div className="space-y-4">
+   542→   542→      <div className="rounded-xl border border-gold/30 bg-gradient-to-br from-gold/10 to-transparent p-4 text-center">
+   543→   543→        <Gift className="mx-auto size-10 text-gold" />
+   544→   544→        <h4 className="mt-2 text-base font-extrabold text-gold">Earn ₹2,000 per friend!</h4>
+   545→   545→        <p className="mt-1 text-xs text-muted-foreground">
+   546→   546→          Get ₹2,000 when your friend makes their first deposit. They get ₹1,000 too!
+   547→   547→        </p>
+   548→   548→      </div>
+   549→   549→      <div>
+   550→   550→        <p className="mb-1 text-[10px] font-bold tracking-wide text-muted-foreground">YOUR REFERRAL CODE</p>
+   551→   551→        <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
+   552→   552→          <span className="flex-1 font-mono text-sm font-bold tracking-wider text-bull">{referralCode}</span>
+   553→   553→          <button
+   554→   554→            onClick={handleCopy}
+   555→   555→            className="rounded-md bg-bull/20 px-2.5 py-1.5 text-[10px] font-bold text-bull"
+   556→   556→          >
+   557→   557→            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+   558→   558→          </button>
+   559→   559→        </div>
+   560→   560→      </div>
+   561→   561→      <div>
+   562→   562→        <p className="mb-1 text-[10px] font-bold tracking-wide text-muted-foreground">SHARE LINK</p>
+   563→   563→        <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
+   564→   564→          <span className="flex-1 truncate text-xs text-muted-foreground">{referralLink}</span>
+   565→   565→          <button
+   566→   566→            onClick={handleCopy}
+   567→   567→            className="rounded-md bg-info/20 px-2.5 py-1.5 text-[10px] font-bold text-info"
+   568→   568→          >
+   569→   569→            {copied ? "COPIED" : "COPY"}
+   570→   570→          </button>
+   571→   571→        </div>
+   572→   572→      </div>
+   573→   573→      <div className="grid grid-cols-3 gap-2">
+   574→   574→        <ShareBtn label="WhatsApp" emoji="💬" />
+   575→   575→        <ShareBtn label="Telegram" emoji="✈️" />
+   576→   576→        <ShareBtn label="More" emoji="⋯" />
+   577→   577→      </div>
+   578→   578→      <div className="rounded-xl border border-border bg-card p-3 text-center">
+   579→   579→        <p className="text-[10px] text-muted-foreground">FRIENDS JOINED</p>
+   580→   580→        <p className="text-2xl font-extrabold text-bull">0</p>
+   581→   581→        <p className="text-[10px] text-muted-foreground">Total earned: ₹0</p>
+   582→   582→      </div>
+   583→   583→    </div>
+   584→   584→  )
+   585→   585→}
+   586→   586→
+   587→   587→function ShareBtn({ label, emoji }: { label: string; emoji: string }) {
+   588→   588→  return (
+   589→   589→    <button className="flex flex-col items-center gap-1 rounded-xl border border-border bg-card py-2.5 text-[10px] font-bold transition active:scale-95">
+   590→   590→      <span className="text-lg">{emoji}</span>
+   591→   591→      {label}
+   592→   592→    </button>
+   593→   593→  )
+   594→   594→}
+   595→   595→
+   596→   596→function NotificationsContent() {
+   597→   597→  const [settings, setSettings] = useState({
+   598→   598→    wins: true,
+   599→   599→    losses: false,
+   600→   600→    deposits: true,
+   601→   601→    withdrawals: true,
+   602→   602→    promotions: true,
+   603→   603→    news: false,
+   604→   604→    priceAlerts: true,
+   605→   605→  })
+   606→   606→  const toggle = (key: keyof typeof settings) =>
+   607→   607→    setSettings((s) => ({ ...s, [key]: !s[key] }))
+   608→   608→  const items = [
+   609→   609→    { key: "wins" as const, icon: Trophy, label: "Win notifications", desc: "Get notified when you win" },
+   610→   610→    { key: "losses" as const, icon: Target, label: "Loss notifications", desc: "Get notified when you lose" },
+   611→   611→    { key: "deposits" as const, icon: TrendingUp, label: "Deposit confirmations", desc: "When deposits are credited" },
+   612→   612→    { key: "withdrawals" as const, icon: Zap, label: "Withdrawal updates", desc: "When withdrawals are processed" },
+   613→   613→    { key: "promotions" as const, icon: Gift, label: "Promotions & offers", desc: "Special bonus offers" },
+   614→   614→    { key: "news" as const, icon: Globe, label: "Crypto news", desc: "Breaking market news" },
+   615→   615→    { key: "priceAlerts" as const, icon: BellRing, label: "Price alerts", desc: "BTC, ETH, SOL price moves" },
+   616→   616→  ]
+   617→   617→  return (
+   618→   618→    <div className="space-y-2">
+   619→   619→      {items.map((item) => (
+   620→   620→        <div key={item.key} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+   621→   621→          <item.icon className="size-5 text-muted-foreground" />
+   622→   622→          <div className="flex-1">
+   623→   623→            <p className="text-sm font-bold">{item.label}</p>
+   624→   624→            <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+   625→   625→          </div>
+   626→   626→          <button
+   627→   627→            onClick={() => toggle(item.key)}
+   628→   628→            className={`relative h-6 w-11 rounded-full transition ${
+   629→   629→              settings[item.key] ? "bg-bull" : "bg-muted"
+   630→   630→            }`}
+   631→   631→            aria-label={`Toggle ${item.label}`}
+   632→   632→          >
+   633→   633→            <motion.span
+   634→   634→              layout
+   635→   635→              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+   636→   636→              className={`absolute top-0.5 size-5 rounded-full bg-white shadow ${
+   637→   637→                settings[item.key] ? "right-0.5" : "left-0.5"
+   638→   638→              }`}
+   639→   639→            />
+   640→   640→          </button>
+   641→   641→        </div>
+   642→   642→      ))}
+   643→   643→    </div>
+   644→   644→  )
+   645→   645→}
+   646→   646→
+   647→   647→function SecurityContent({
+   648→   648→  authMethod,
+   649→   649→  email,
+   650→   650→  phone,
+   651→   651→  isPremium,
+   652→   652→}: {
+   653→   653→  authMethod: string | null
+   654→   654→  email: string | null
+   655→   655→  phone: string | null
+   656→   656→  isPremium: boolean
+   657→   657→}) {
+   658→   658→  const authLabel =
+   659→   659→    authMethod === "google" ? "Google Account" :
+   660→   660→    authMethod === "phone" ? "Phone Number" :
+   661→   661→    authMethod === "email" ? "Email & Password" :
+   662→   662→    "Guest"
+   663→   663→  return (
+   664→   664→    <div className="space-y-3">
+   665→   665→      <div className="rounded-xl border border-bull/30 bg-bull/5 p-3">
+   666→   666→        <div className="flex items-center gap-2">
+   667→   667→          <Shield className="size-5 text-bull" />
+   668→   668→          <p className="text-sm font-bold text-bull">Account Verified</p>
+   669→   669→        </div>
+   670→   670→        <p className="mt-1 text-[10px] text-muted-foreground">
+   671→   671→          Your account is verified via {authLabel}.
+   672→   672→        </p>
+   673→   673→      </div>
+   674→   674→
+   675→   675→      <div className="rounded-xl border border-border bg-card p-3">
+   676→   676→        <p className="mb-2 text-[10px] font-bold tracking-wide text-muted-foreground">ACCOUNT DETAILS</p>
+   677→   677→        <DetailRow icon={<Mail className="size-4 text-muted-foreground" />} label="Email" value={email || "Not set"} />
+   678→   678→        <DetailRow icon={<Phone className="size-4 text-muted-foreground" />} label="Phone" value={phone || "Not set"} />
+   679→   679→        <DetailRow icon={<Lock className="size-4 text-muted-foreground" />} label="Sign-in method" value={authLabel} />
+   680→   680→        <DetailRow icon={<Crown className="size-4 text-muted-foreground" />} label="Plan" value={isPremium ? "Premium" : "Free"} />
+   681→   681→      </div>
+   682→   682→
+   683→   683→      <div className="rounded-xl border border-gold/30 bg-gold/5 p-3">
+   684→   684→        <div className="flex items-center gap-2">
+   685→   685→          <Lock className="size-5 text-gold" />
+   686→   686→          <p className="text-sm font-bold text-gold">KYC Status: Verified</p>
+   687→   687→        </div>
+   688→   688→        <p className="mt-1 text-[10px] text-muted-foreground">
+   689→   689→          Your identity has been verified. Withdrawal limit: ₹50,000/day.
+   690→   690→        </p>
+   691→   691→      </div>
+   692→   692→
+   693→   693→      <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card py-3 text-xs font-bold text-muted-foreground">
+   694→   694→        <Shield className="size-4" /> Change Password
+   695→   695→      </button>
+   696→   696→      <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card py-3 text-xs font-bold text-muted-foreground">
+   697→   697→        <Lock className="size-4" /> Enable Two-Factor Authentication
+   698→   698→      </button>
+   699→   699→    </div>
+   700→   700→  )
+   701→   701→}
+   702→   702→
+   703→   703→function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+   704→   704→  return (
+   705→   705→    <div className="flex items-center gap-2 border-b border-border/40 py-2 last:border-0">
+   706→   706→      {icon}
+   707→   707→      <span className="flex-1 text-xs text-muted-foreground">{label}</span>
+   708→   708→      <span className="text-xs font-semibold">{value}</span>
+   709→   709→    </div>
+   710→   710→  )
+   711→   711→}
+   712→   712→
+   713→   713→function HelpContent() {
+   714→   714→  const faqs = [
+   715→   715→    { q: "How do I place a prediction?", a: "Go to the Predict tab, select time & amount, then tap UP or DOWN. Max 3 taps to place a bet!" },
+   716→   716→    { q: "How are winners decided?", a: "If you predict UP and the price goes up by the end of the round, you win 1.8x your stake." },
+   717→   717→    { q: "How do I withdraw my winnings?", a: "Go to the Wallet tab, tap Withdraw, enter the amount, and choose your payment method. Withdrawals are instant." },
+   718→   718→    { q: "What is the daily limit?", a: "Free users get 3 predictions per day. Upgrade to Premium for unlimited predictions." },
+   719→   719→    { q: "Is my money safe?", a: "Yes — all funds are held securely and transactions are encrypted. We use bank-grade security." },
+   720→   720→  ]
+   721→   721→  const [open, setOpen] = useState<number | null>(0)
+   722→   722→  return (
+   723→   723→    <div className="space-y-3">
+   724→   724→      <div className="rounded-xl border border-info/30 bg-info/5 p-3">
+   725→   725→        <p className="text-xs font-bold text-info">Need help? We're here 24/7</p>
+   726→   726→        <p className="mt-0.5 text-[10px] text-muted-foreground">Average response time: under 5 minutes</p>
+   727→   727→      </div>
+   728→   728→      <div className="grid grid-cols-3 gap-2">
+   729→   729→        <ContactBtn icon={<MessageSquare className="size-5" />} label="Live Chat" />
+   730→   730→        <ContactBtn icon={<Mail className="size-5" />} label="Email" />
+   731→   731→        <ContactBtn icon={<Phone className="size-5" />} label="Call" />
+   732→   732→      </div>
+   733→   733→      <div className="space-y-2">
+   734→   734→        <p className="text-[10px] font-bold tracking-wide text-muted-foreground">FREQUENTLY ASKED QUESTIONS</p>
+   735→   735→        {faqs.map((f, i) => (
+   736→   736→          <div key={i} className="rounded-xl border border-border bg-card overflow-hidden">
+   737→   737→            <button
+   738→   738→              onClick={() => setOpen(open === i ? null : i)}
+   739→   739→              className="flex w-full items-center justify-between gap-2 p-3 text-left"
+   740→   740→            >
+   741→   741→              <span className="text-xs font-bold">{f.q}</span>
+   742→   742→              <ChevronRight className={`size-4 shrink-0 text-muted-foreground transition ${open === i ? "rotate-90" : ""}`} />
+   743→   743→            </button>
+   744→   744→            <AnimatePresence>
+   745→   745→              {open === i && (
+   746→   746→                <motion.div
+   747→   747→                  initial={{ height: 0, opacity: 0 }}
+   748→   748→                  animate={{ height: "auto", opacity: 1 }}
+   749→   749→                  exit={{ height: 0, opacity: 0 }}
+   750→   750→                  className="overflow-hidden"
+   751→   751→                >
+   752→   752→                  <p className="px-3 pb-3 text-xs text-muted-foreground">{f.a}</p>
+   753→   753→                </motion.div>
+   754→   754→              )}
+   755→   755→            </AnimatePresence>
+   756→   756→          </div>
+   757→   757→        ))}
+   758→   758→      </div>
+   759→   759→    </div>
+   760→   760→  )
+   761→   761→}
+   762→   762→
+   763→   763→function ContactBtn({ icon, label }: { icon: React.ReactNode; label: string }) {
+   764→   764→  return (
+   765→   765→    <button className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-card py-3 text-[10px] font-bold transition active:scale-95">
+   766→   766→      <span className="text-bull">{icon}</span>
+   767→   767→      {label}
+   768→   768→    </button>
+   769→   769→  )
+   770→   770→}
+   771→   771→
+   772→   772→function PremiumFeature({ icon, text }: { icon: React.ReactNode; text: string }) {
+   773→   773→  return (
+   774→   774→    <div className="flex items-center gap-3 text-sm">
+   775→   775→      {icon}
+   776→   776→      <span className="font-semibold">{text}</span>
+   777→   777→    </div>
+   778→   778→  )
+   779→   779→}
+   780→   780→

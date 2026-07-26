@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String   @default("Trader")
+  avatar    String   @default("/images/winner-1.png")
+  email     String?  @unique
+  phone     String?  @unique
+  password  String?  // hashed (sha256)
+  authMethod String  @default("email") // email, google, phone, guest
+  isVerified Boolean @default(false)
+  balance   Float    @default(0)
+  winnings  Float    @default(0)
+  bonus     Float    @default(0)
+  profit    Float    @default(0)
+  wins      Int      @default(0)
+  totalBets Int      @default(0)
+  country   String   @default("IN")
+  // 2FA
+  twoFactorEnabled  Boolean @default(false)
+  twoFactorSecret   String?
+  // Referrals
+  referralCode  String?  @unique
+  referredBy    String?  // referrer's userId
+  referralEarnings Float @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bets        Bet[]
+  transactions Transaction[]
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone, code])
+}
+
+model Round {
+  id          String   @id @default(cuid())
+  roundId     String   @unique
+  coin        String   @default("BTCUSDT")  // BTCUSDT, ETHUSDT, SOLUSDT
+  duration    Int      @default(60)          // seconds: 5,10,20,30,40,50,60
+  entryPrice  Float
+  exitPrice   Float?
+  status      String   @default("ACTIVE")    // ACTIVE, COMPLETED
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bets Bet[]
+}
+
+model Bet {
+  id         String   @id @default(cuid())
+  userId     String
+  roundId    String
+  direction  String   // UP or DOWN
+  amount     Float
+  multiplier Float    @default(1.8)
+  status     String   @default("PENDING") // PENDING, WON, LOST
+  payout     Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id])
+  round Round  @relation(fields: [roundId], references: [id])
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String   // DEPOSIT, WITHDRAWAL, BET_PLACED, BET_WON
+  amount        Float
+  status        String   @default("COMPLETED") // PENDING, COMPLETED, FAILED
+  method        String?  // UPI, Paytm, G Pay, PhonePe, BANK
+  referenceId   String?
+  balanceBefore Float    @default(0)
+  balanceAfter  Float    @default(0)
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model PriceSnapshot {
+  id        String   @id @default(cuid())
+  coin      String   // BTCUSDT, ETHUSDT, SOLUSDT
+  price     Float
+  source    String   @default("binance") // binance, simulated
+  timestamp DateTime @default(now())
+}

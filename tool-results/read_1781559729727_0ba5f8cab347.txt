@@ -1,0 +1,850 @@
+     1→     1→"use client"
+     2→     2→
+     3→     3→import { useState, useEffect, useCallback } from "react"
+     4→     4→import { motion, AnimatePresence } from "framer-motion"
+     5→     5→import {
+     6→     6→  ChevronUp,
+     7→     7→  ChevronDown,
+     8→     8→  ArrowUpRight,
+     9→     9→  ArrowDownRight,
+    10→    10→  Timer,
+    11→    11→  Plus,
+    12→    12→  TrendingUp,
+    13→    13→  Loader2,
+    14→    14→  ShieldCheck,
+    15→    15→  Zap,
+    16→    16→  X,
+    17→    17→  Wallet,
+    18→    18→} from "lucide-react"
+    19→    19→import { PriceChart } from "../price-chart"
+    20→    20→import {
+    21→    21→  useCrypto,
+    22→    22→  formatClock,
+    23→    23→  formatPrice,
+    24→    24→  COINS,
+    25→    25→  DURATIONS,
+    26→    26→  AMOUNT_OPTIONS,
+    27→    27→  type Coin,
+    28→    28→  type Duration,
+    29→    29→} from "../store"
+    30→    30→import type { Tab } from "../app-shell"
+    31→    31→
+    32→    32→/**
+    33→    33→ * Single-Screen Trading Experience — Redesigned
+    34→    34→ *
+    35→    35→ * ONE screen shows everything:
+    36→    36→ *   - Coin tabs (BTC/ETH/SOL) — compact horizontal pills
+    37→    37→ *   - Live chart + price — prominent
+    38→    38→ *   - Time chips (5s, 10s, 20s, 30s, 40s, 50s, 1m) — scrollable row
+    39→    39→ *   - Amount chips (₹100, ₹500, ₹1000, ₹5000, Custom) — scrollable row
+    40→    40→ *   - Large UP / DOWN buttons — MASSIVE, full-width, with glow
+    41→    41→ *   - Potential payout preview — inline between chips and buttons
+    42→    42→ *
+    43→    43→ * Flow:
+    44→    44→ *   User opens screen → Selects time → Selects amount → Presses UP or DOWN → Bet placed instantly
+    45→    45→ *   Maximum 3 taps.
+    46→    46→ *
+    47→    47→ * States:
+    48→    48→ *   - "trade" — Main trading screen (coin, chart, chips, UP/DOWN)
+    49→    49→ *   - "placing" — Bet is being processed (loading spinner)
+    50→    50→ *   - "live" — Active bet tracking (chart with entry line, countdown)
+    51→    51→ *   - "result" — Round result (win/lose)
+    52→    52→ */
+    53→    53→
+    54→    54→type TradeStep = "trade" | "placing" | "live" | "result"
+    55→    55→
+    56→    56→export function PredictScreen({ onNavigate }: { onNavigate: (t: Tab) => void }) {
+    57→    57→  const {
+    58→    58→    country,
+    59→    59→    fmt,
+    60→    60→    mounted,
+    61→    61→    prices,
+    62→    62→    priceHistory,
+    63→    63→    currentRound,
+    64→    64→    wsConnected,
+    65→    65→    balance,
+    66→    66→    activeBet,
+    67→    67→    lastResult,
+    68→    68→    placeBet,
+    69→    69→    subscribeToRound,
+    70→    70→    fetchRoundInfo,
+    71→    71→    winEvent,
+    72→    72→    clearWinEvent,
+    73→    73→    clearLastResult,
+    74→    74→    tier,
+    75→    75→    dailyPredictions,
+    76→    76→    dailyLimit,
+    77→    77→    activatePremium,
+    78→    78→  } = useCrypto()
+    79→    79→
+    80→    80→  // --- Trading selections ---
+    81→    81→  const [selectedCoin, setSelectedCoin] = useState<Coin>("BTCUSDT")
+    82→    82→  const [selectedDuration, setSelectedDuration] = useState<Duration>(30)
+    83→    83→  const [selectedAmount, setSelectedAmount] = useState<number>(100)
+    84→    84→  const [customAmount, setCustomAmount] = useState("")
+    85→    85→  const [showCustomInput, setShowCustomInput] = useState(false)
+    86→    86→  const [betPlacing, setBetPlacing] = useState(false)
+    87→    87→  const [showPremiumModal, setShowPremiumModal] = useState(false)
+    88→    88→
+    89→    89→  // Derive effective step from store state
+    90→    90→  const effectiveStep: TradeStep = lastResult
+    91→    91→    ? "result"
+    92→    92→    : activeBet
+    93→    93→      ? "live"
+    94→    94→      : betPlacing
+    95→    95→        ? "placing"
+    96→    96→        : "trade"
+    97→    97→
+    98→    98→  // When there's an active bet, derive coin/duration from it
+    99→    99→  const displayCoin: Coin = activeBet?.round?.coin ? (activeBet.round.coin as Coin) : selectedCoin
+   100→   100→  const displayDuration: Duration = activeBet?.round?.duration ? (activeBet.round.duration as Duration) : selectedDuration
+   101→   101→
+   102→   102→  const coinData = COINS.find((c) => c.id === displayCoin)!
+   103→   103→  const currentPrice = prices[displayCoin]
+   104→   104→  const history = priceHistory[displayCoin] || []
+   105→   105→
+   106→   106→  // Subscribe to round when coin/duration changes
+   107→   107→  useEffect(() => {
+   108→   108→    if (!mounted) return
+   109→   109→    subscribeToRound(selectedCoin, selectedDuration)
+   110→   110→    fetchRoundInfo(selectedCoin, selectedDuration)
+   111→   111→  }, [mounted, selectedCoin, selectedDuration, subscribeToRound, fetchRoundInfo])
+   112→   112→
+   113→   113→  // Compute bet amount
+   114→   114→  const betAmount = customAmount ? Number(customAmount) : selectedAmount
+   115→   115→
+   116→   116→  // Potential payout
+   117→   117→  const potentialPayout = Math.round(betAmount * 1.8 * 100) / 100
+   118→   118→
+   119→   119→  // Price change for current coin
+   120→   120→  const basePrice = history.length > 5 ? history[0] : 0
+   121→   121→  const priceChange = basePrice > 0 && currentPrice > 0
+   122→   122→    ? ((currentPrice - basePrice) / basePrice * 100)
+   123→   123→    : 0
+   124→   124→  const isPriceUp = priceChange >= 0
+   125→   125→
+   126→   126→  // --- Place Bet instantly ---
+   127→   127→  const handlePlaceBet = useCallback(async (direction: "UP" | "DOWN") => {
+   128→   128→    if (betAmount <= 0 || betAmount > balance) return
+   129→   129→
+   130→   130→    if (tier === "FREE" && dailyLimit > 0 && dailyPredictions >= dailyLimit) {
+   131→   131→      setShowPremiumModal(true)
+   132→   132→      return
+   133→   133→    }
+   134→   134→
+   135→   135→    setBetPlacing(true)
+   136→   136→    try {
+   137→   137→      const result = await placeBet(direction, selectedCoin, selectedDuration, betAmount)
+   138→   138→      setBetPlacing(false)
+   139→   139→      if (!result.success && result.code === "DAILY_LIMIT_REACHED") {
+   140→   140→        setShowPremiumModal(true)
+   141→   141→      }
+   142→   142→    } catch {
+   143→   143→      setBetPlacing(false)
+   144→   144→    }
+   145→   145→  }, [betAmount, balance, tier, dailyLimit, dailyPredictions, placeBet, selectedCoin, selectedDuration])
+   146→   146→
+   147→   147→  const handlePlayAgain = () => {
+   148→   148→    clearWinEvent()
+   149→   149→    clearLastResult()
+   150→   150→    setCustomAmount("")
+   151→   151→  }
+   152→   152→
+   153→   153→  const getPriceChangeColor = (entry: number, exit: number) => {
+   154→   154→    if (exit > entry) return "text-bull"
+   155→   155→    if (exit < entry) return "text-bear"
+   156→   156→    return "text-muted-foreground"
+   157→   157→  }
+   158→   158→
+   159→   159→  // Coin tab color helper
+   160→   160→  const coinTabColor = (coin: Coin, isActive: boolean) => {
+   161→   161→    if (!isActive) return "border-transparent bg-muted/50 text-muted-foreground"
+   162→   162→    switch (coin) {
+   163→   163→      case "BTCUSDT": return "border-gold/40 bg-gold/10 text-gold"
+   164→   164→      case "ETHUSDT": return "border-blue-500/40 bg-blue-500/10 text-blue-400"
+   165→   165→      case "SOLUSDT": return "border-purple-500/40 bg-purple-500/10 text-purple-400"
+   166→   166→    }
+   167→   167→  }
+   168→   168→
+   169→   169→  const coinIconBg = (coin: Coin) => {
+   170→   170→    switch (coin) {
+   171→   171→      case "BTCUSDT": return "bg-gold/20 text-gold"
+   172→   172→      case "ETHUSDT": return "bg-blue-500/20 text-blue-400"
+   173→   173→      case "SOLUSDT": return "bg-purple-500/20 text-purple-400"
+   174→   174→    }
+   175→   175→  }
+   176→   176→
+   177→   177→  const canBet = betAmount > 0 && betAmount <= balance && !betPlacing
+   178→   178→
+   179→   179→  return (
+   180→   180→    <div className="flex flex-col gap-2 px-3 pb-3 pt-2">
+   181→   181→      {/* Daily limit indicator for free users */}
+   182→   182→      {tier === "FREE" && effectiveStep === "trade" && (
+   183→   183→        <div className="flex items-center justify-between rounded-lg border border-gold/30 bg-gold/5 px-3 py-1.5">
+   184→   184→          <div className="flex items-center gap-2">
+   185→   185→            <Zap className="size-3.5 text-gold" />
+   186→   186→            <span className="text-[10px] font-bold text-gold">
+   187→   187→              {dailyLimit > 0 ? `${Math.max(0, dailyLimit - dailyPredictions)}/${dailyLimit}` : "0/3"} FREE TODAY
+   188→   188→            </span>
+   189→   189→          </div>
+   190→   190→          <button
+   191→   191→            onClick={() => setShowPremiumModal(true)}
+   192→   192→            className="rounded-md bg-gold/20 px-2 py-0.5 text-[9px] font-bold text-gold hover:bg-gold/30 transition"
+   193→   193→          >
+   194→   194→            UNLIMITED →
+   195→   195→          </button>
+   196→   196→        </div>
+   197→   197→      )}
+   198→   198→
+   199→   199→      {/* Premium badge for premium users */}
+   200→   200→      {tier === "PREMIUM" && effectiveStep === "trade" && (
+   201→   201→        <div className="flex items-center justify-center gap-1.5 rounded-lg border border-gold/40 bg-gold/10 px-3 py-1.5">
+   202→   202→          <Zap className="size-3 text-gold" />
+   203→   203→          <span className="text-[10px] font-bold text-gold">PREMIUM · UNLIMITED PREDICTIONS</span>
+   204→   204→        </div>
+   205→   205→      )}
+   206→   206→
+   207→   207→      <AnimatePresence mode="wait">
+   208→   208→        {/* ====== MAIN TRADING SCREEN ====== */}
+   209→   209→        {effectiveStep === "trade" && (
+   210→   210→          <motion.div
+   211→   211→            key="trade"
+   212→   212→            initial={{ opacity: 0 }}
+   213→   213→            animate={{ opacity: 1 }}
+   214→   214→            exit={{ opacity: 0 }}
+   215→   215→            className="flex flex-col gap-2"
+   216→   216→          >
+   217→   217→            {/* ── Coin Selector Tabs ── */}
+   218→   218→            <div className="flex items-center gap-1.5">
+   219→   219→              {COINS.map((coin) => {
+   220→   220→                const isActive = selectedCoin === coin.id
+   221→   221→                const p = prices[coin.id]
+   222→   222→                const h = priceHistory[coin.id] || []
+   223→   223→                const bp = h.length > 5 ? h[0] : 0
+   224→   224→                const ch = bp > 0 && p > 0 ? ((p - bp) / bp * 100) : 0
+   225→   225→                const up = ch >= 0
+   226→   226→                return (
+   227→   227→                  <motion.button
+   228→   228→                    key={coin.id}
+   229→   229→                    onClick={() => setSelectedCoin(coin.id)}
+   230→   230→                    className={`flex flex-1 items-center gap-2 rounded-xl border px-2.5 py-2 transition-all ${coinTabColor(coin.id, isActive)}`}
+   231→   231→                    whileTap={{ scale: 0.96 }}
+   232→   232→                  >
+   233→   233→                    <span className={`flex size-7 items-center justify-center rounded-full text-xs font-bold ${isActive ? coinIconBg(coin.id) : "bg-muted text-muted-foreground"}`}>
+   234→   234→                      {coin.icon}
+   235→   235→                    </span>
+   236→   236→                    <div className="flex-1 text-left min-w-0">
+   237→   237→                      <p className="text-[11px] font-bold truncate">{coin.label}</p>
+   238→   238→                      <div className="flex items-center gap-1">
+   239→   239→                        <p className="text-[10px] font-extrabold tabular-nums truncate">
+   240→   240→                          {mounted && p > 0 ? `$${formatPrice(p, coin.id)}` : "--"}
+   241→   241→                        </p>
+   242→   242→                        {mounted && p > 0 && (
+   243→   243→                          <span className={`text-[8px] font-bold flex items-center ${up ? "text-bull" : "text-bear"}`}>
+   244→   244→                            {up ? <ChevronUp className="size-2" /> : <ChevronDown className="size-2" />}
+   245→   245→                            {Math.abs(ch).toFixed(1)}%
+   246→   246→                          </span>
+   247→   247→                        )}
+   248→   248→                      </div>
+   249→   249→                    </div>
+   250→   250→                  </motion.button>
+   251→   251→                )
+   252→   252→              })}
+   253→   253→            </div>
+   254→   254→
+   255→   255→            {/* ── Live Price + Chart ── */}
+   256→   256→            <div className="rounded-xl border border-border bg-card overflow-hidden">
+   257→   257→              {/* Price header */}
+   258→   258→              <div className="flex items-center justify-between px-3 pt-2.5 pb-0.5">
+   259→   259→                <div>
+   260→   260→                  <p className="text-[9px] font-semibold text-muted-foreground tracking-wider uppercase">Current Price</p>
+   261→   261→                  <div className="flex items-baseline gap-1.5">
+   262→   262→                    <p className="text-2xl font-extrabold tabular-nums leading-tight">
+   263→   263→                      {mounted && currentPrice > 0 ? `$${formatPrice(currentPrice, selectedCoin)}` : "--.--"}
+   264→   264→                    </p>
+   265→   265→                    <span className="text-[10px] font-semibold text-muted-foreground">USDT</span>
+   266→   266→                    {mounted && currentPrice > 0 && (
+   267→   267→                      <span className={`ml-1 flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold ${isPriceUp ? "bg-bull/15 text-bull" : "bg-bear/15 text-bear"}`}>
+   268→   268→                        {isPriceUp ? <ChevronUp className="size-2.5" /> : <ChevronDown className="size-2.5" />}
+   269→   269→                        {Math.abs(priceChange).toFixed(2)}%
+   270→   270→                      </span>
+   271→   271→                    )}
+   272→   272→                  </div>
+   273→   273→                </div>
+   274→   274→                <div className="flex items-center gap-1.5">
+   275→   275→                  {wsConnected && (
+   276→   276→                    <span className="flex items-center gap-1 rounded-md border border-bull/40 bg-bull/10 px-1.5 py-0.5 text-[8px] font-bold text-bull">
+   277→   277→                      <span className="size-1.5 rounded-full bg-bull animate-pulse" />LIVE
+   278→   278→                    </span>
+   279→   279→                  )}
+   280→   280→                  {currentRound && (
+   281→   281→                    <span className="flex items-center gap-1 rounded-md border border-border bg-muted px-1.5 py-0.5 text-[9px] font-bold tabular-nums">
+   282→   282→                      <Timer className="size-2.5 text-bull" />
+   283→   283→                      {formatClock(currentRound.timeLeft)}
+   284→   284→                    </span>
+   285→   285→                  )}
+   286→   286→                </div>
+   287→   287→              </div>
+   288→   288→
+   289→   289→              {/* Chart */}
+   290→   290→              {history.length > 2 && (
+   291→   291→                <div className="px-1 pb-1">
+   292→   292→                  <PriceChart
+   293→   293→                    points={history.slice(-40)}
+   294→   294→                    className="h-28 w-full"
+   295→   295→                    entryPrice={null}
+   296→   296→                    direction={null}
+   297→   297→                  />
+   298→   298→                </div>
+   299→   299→              )}
+   300→   300→            </div>
+   301→   301→
+   302→   302→            {/* ── Time Chips ── */}
+   303→   303→            <div>
+   304→   304→              <p className="text-[9px] font-bold tracking-[0.2em] text-muted-foreground mb-1 px-0.5 uppercase">Duration</p>
+   305→   305→              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+   306→   306→                {DURATIONS.map((d) => (
+   307→   307→                  <motion.button
+   308→   308→                    key={d.value}
+   309→   309→                    onClick={() => setSelectedDuration(d.value)}
+   310→   310→                    className={`shrink-0 rounded-lg border px-3.5 py-1.5 text-center transition-all ${
+   311→   311→                      selectedDuration === d.value
+   312→   312→                        ? "border-bull/50 bg-bull/15 text-bull shadow-[0_0_8px_rgba(47,224,122,0.15)]"
+   313→   313→                        : "border-border bg-card text-muted-foreground hover:border-bull/25"
+   314→   314→                    }`}
+   315→   315→                    whileTap={{ scale: 0.92 }}
+   316→   316→                  >
+   317→   317→                    <span className="text-xs font-extrabold">{d.label}</span>
+   318→   318→                  </motion.button>
+   319→   319→                ))}
+   320→   320→              </div>
+   321→   321→            </div>
+   322→   322→
+   323→   323→            {/* ── Amount Chips ── */}
+   324→   324→            <div>
+   325→   325→              <p className="text-[9px] font-bold tracking-[0.2em] text-muted-foreground mb-1 px-0.5 uppercase">Amount</p>
+   326→   326→              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+   327→   327→                {AMOUNT_OPTIONS.map((a) => (
+   328→   328→                  <motion.button
+   329→   329→                    key={a}
+   330→   330→                    onClick={() => { setSelectedAmount(a); setCustomAmount(""); setShowCustomInput(false) }}
+   331→   331→                    className={`shrink-0 rounded-lg border px-3.5 py-1.5 text-center transition-all ${
+   332→   332→                      selectedAmount === a && !customAmount && !showCustomInput
+   333→   333→                        ? "border-bull/50 bg-bull/15 text-bull shadow-[0_0_8px_rgba(47,224,122,0.15)]"
+   334→   334→                        : "border-border bg-card text-muted-foreground hover:border-bull/25"
+   335→   335→                    }`}
+   336→   336→                    whileTap={{ scale: 0.92 }}
+   337→   337→                  >
+   338→   338→                    <span className="text-xs font-bold">{country.symbol.trim()}{a >= 1000 ? `${(a / 1000).toFixed(a % 1000 === 0 ? 0 : 1)}K` : a}</span>
+   339→   339→                  </motion.button>
+   340→   340→                ))}
+   341→   341→                <motion.button
+   342→   342→                  onClick={() => { setShowCustomInput(true); setCustomAmount("") }}
+   343→   343→                  className={`shrink-0 rounded-lg border px-3.5 py-1.5 text-center transition-all ${
+   344→   344→                    showCustomInput
+   345→   345→                      ? "border-bull/50 bg-bull/15 text-bull shadow-[0_0_8px_rgba(47,224,122,0.15)]"
+   346→   346→                      : "border-border bg-card text-muted-foreground hover:border-bull/25"
+   347→   347→                  }`}
+   348→   348→                  whileTap={{ scale: 0.92 }}
+   349→   349→                >
+   350→   350→                  <span className="text-xs font-bold">Custom</span>
+   351→   351→                </motion.button>
+   352→   352→              </div>
+   353→   353→
+   354→   354→              {/* Custom Amount Input */}
+   355→   355→              <AnimatePresence>
+   356→   356→                {showCustomInput && (
+   357→   357→                  <motion.div
+   358→   358→                    initial={{ opacity: 0, height: 0 }}
+   359→   359→                    animate={{ opacity: 1, height: "auto" }}
+   360→   360→                    exit={{ opacity: 0, height: 0 }}
+   361→   361→                    className="overflow-hidden mt-1.5"
+   362→   362→                  >
+   363→   363→                    <div className="flex items-center rounded-lg border border-border bg-card px-3 py-1.5 focus-within:border-bull/50 transition-colors">
+   364→   364→                      <span className="text-sm font-bold text-muted-foreground">{country.symbol.trim()}</span>
+   365→   365→                      <input
+   366→   366→                        autoFocus
+   367→   367→                        inputMode="numeric"
+   368→   368→                        value={customAmount}
+   369→   369→                        onChange={(e) => setCustomAmount(e.target.value.replace(/[^0-9]/g, ""))}
+   370→   370→                        placeholder="Enter amount"
+   371→   371→                        className="w-full bg-transparent px-2 text-base font-extrabold outline-none"
+   372→   372→                      />
+   373→   373→                      {customAmount && (
+   374→   374→                        <button onClick={() => setCustomAmount("")} className="text-muted-foreground hover:text-foreground">
+   375→   375→                          <X className="size-4" />
+   376→   376→                        </button>
+   377→   377→                      )}
+   378→   378→                    </div>
+   379→   379→                  </motion.div>
+   380→   380→                )}
+   381→   381→              </AnimatePresence>
+   382→   382→            </div>
+   383→   383→
+   384→   384→            {/* ── Payout Preview + Balance Bar ── */}
+   385→   385→            <div className="flex items-center gap-2">
+   386→   386→              <div className="flex-1 flex items-center justify-between rounded-xl bg-gradient-to-r from-bull/10 to-bull/5 border border-bull/20 px-3 py-2">
+   387→   387→                <div className="flex items-center gap-1.5">
+   388→   388→                  <TrendingUp className="size-3.5 text-bull" />
+   389→   389→                  <span className="text-[10px] text-muted-foreground font-semibold">Payout (1.8x)</span>
+   390→   390→                </div>
+   391→   391→                <span className="text-sm font-extrabold text-bull">{fmt(potentialPayout, 2)}</span>
+   392→   392→              </div>
+   393→   393→              <button
+   394→   394→                onClick={() => onNavigate("wallet")}
+   395→   395→                className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 hover:border-bull/30 transition-colors"
+   396→   396→              >
+   397→   397→                <Wallet className="size-3.5 text-muted-foreground" />
+   398→   398→                <span className="text-sm font-bold">{fmt(balance, 2)}</span>
+   399→   399→                <Plus className="size-3 text-bull" />
+   400→   400→              </button>
+   401→   401→            </div>
+   402→   402→
+   403→   403→            {/* ── UP / DOWN Buttons — MASSIVE ── */}
+   404→   404→            <div className="grid grid-cols-2 gap-2.5 mt-0.5">
+   405→   405→              <motion.button
+   406→   406→                onClick={() => handlePlaceBet("UP")}
+   407→   407→                disabled={!canBet}
+   408→   408→                className="group relative flex flex-col items-center justify-center gap-1 rounded-2xl border-2 border-bull/50 bg-gradient-to-b from-bull/20 to-bull/5 py-6 transition-all hover:from-bull/30 hover:to-bull/10 hover:border-bull/70 disabled:opacity-30 disabled:hover:from-bull/20 disabled:hover:to-bull/5 disabled:hover:border-bull/50 active:scale-[0.97]"
+   409→   409→                whileTap={{ scale: 0.95 }}
+   410→   410→              >
+   411→   411→                {/* Glow effect */}
+   412→   412→                {canBet && (
+   413→   413→                  <span className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-[inset_0_0_30px_rgba(47,224,122,0.1),0_0_20px_rgba(47,224,122,0.15)]" />
+   414→   414→                )}
+   415→   415→                <ArrowUpRight className="size-10 text-bull relative z-10" />
+   416→   416→                <span className="text-xl font-black text-bull relative z-10 tracking-wide">UP</span>
+   417→   417→                <span className="text-[10px] font-semibold text-bull/60 relative z-10">Price will rise</span>
+   418→   418→              </motion.button>
+   419→   419→              <motion.button
+   420→   420→                onClick={() => handlePlaceBet("DOWN")}
+   421→   421→                disabled={!canBet}
+   422→   422→                className="group relative flex flex-col items-center justify-center gap-1 rounded-2xl border-2 border-bear/50 bg-gradient-to-b from-bear/20 to-bear/5 py-6 transition-all hover:from-bear/30 hover:to-bear/10 hover:border-bear/70 disabled:opacity-30 disabled:hover:from-bear/20 disabled:hover:to-bear/5 disabled:hover:border-bear/50 active:scale-[0.97]"
+   423→   423→                whileTap={{ scale: 0.95 }}
+   424→   424→              >
+   425→   425→                {/* Glow effect */}
+   426→   426→                {canBet && (
+   427→   427→                  <span className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-[inset_0_0_30px_rgba(242,63,75,0.1),0_0_20px_rgba(242,63,75,0.15)]" />
+   428→   428→                )}
+   429→   429→                <ArrowDownRight className="size-10 text-bear relative z-10" />
+   430→   430→                <span className="text-xl font-black text-bear relative z-10 tracking-wide">DOWN</span>
+   431→   431→                <span className="text-[10px] font-semibold text-bear/60 relative z-10">Price will fall</span>
+   432→   432→              </motion.button>
+   433→   433→            </div>
+   434→   434→
+   435→   435→            {/* Insufficient balance hint */}
+   436→   436→            {betAmount > balance && balance > 0 && (
+   437→   437→              <motion.p
+   438→   438→                initial={{ opacity: 0 }}
+   439→   439→                animate={{ opacity: 1 }}
+   440→   440→                className="text-center text-[10px] font-semibold text-bear"
+   441→   441→              >
+   442→   442→                Insufficient balance · <button onClick={() => onNavigate("wallet")} className="underline text-bull">Add funds</button>
+   443→   443→              </motion.p>
+   444→   444→            )}
+   445→   445→            {balance <= 0 && (
+   446→   446→              <motion.div
+   447→   447→                initial={{ opacity: 0 }}
+   448→   448→                animate={{ opacity: 1 }}
+   449→   449→                className="text-center"
+   450→   450→              >
+   451→   451→                <button
+   452→   452→                  onClick={() => onNavigate("wallet")}
+   453→   453→                  className="inline-flex items-center gap-1.5 rounded-xl bg-bull/15 border border-bull/30 px-4 py-2 text-xs font-bold text-bull hover:bg-bull/25 transition"
+   454→   454→                >
+   455→   455→                  <Wallet className="size-3.5" /> Add funds to start trading
+   456→   456→                </button>
+   457→   457→              </motion.div>
+   458→   458→            )}
+   459→   459→
+   460→   460→            {/* Fair play notice */}
+   461→   461→            <div className="flex items-center justify-center gap-1.5 text-[9px] text-muted-foreground/60 pt-0.5">
+   462→   462→              <ShieldCheck className="size-2.5" />
+   463→   463→              Server-verified · Fair play · 1.8x return
+   464→   464→            </div>
+   465→   465→          </motion.div>
+   466→   466→        )}
+   467→   467→
+   468→   468→        {/* ====== PLACING BET ====== */}
+   469→   469→        {effectiveStep === "placing" && (
+   470→   470→          <motion.div
+   471→   471→            key="placing"
+   472→   472→            initial={{ opacity: 0 }}
+   473→   473→            animate={{ opacity: 1 }}
+   474→   474→            className="flex flex-col items-center justify-center gap-4 py-16"
+   475→   475→          >
+   476→   476→            <div className="relative">
+   477→   477→              <div className="size-20 rounded-full border-4 border-bull/20 flex items-center justify-center">
+   478→   478→                <Loader2 className="size-8 animate-spin text-bull" />
+   479→   479→              </div>
+   480→   480→            </div>
+   481→   481→            <div className="text-center">
+   482→   482→              <h2 className="text-xl font-extrabold mt-1">Placing Bet...</h2>
+   483→   483→              <p className="text-xs text-muted-foreground mt-1">Securely processing your prediction</p>
+   484→   484→            </div>
+   485→   485→            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+   486→   486→              <ShieldCheck className="size-3.5 text-bull" />
+   487→   487→              Server-verified transaction
+   488→   488→            </div>
+   489→   489→          </motion.div>
+   490→   490→        )}
+   491→   491→
+   492→   492→        {/* ====== LIVE ROUND TRACKING ====== */}
+   493→   493→        {effectiveStep === "live" && activeBet && (
+   494→   494→          <motion.div
+   495→   495→            key="live"
+   496→   496→            initial={{ opacity: 0, x: 20 }}
+   497→   497→            animate={{ opacity: 1, x: 0 }}
+   498→   498→            exit={{ opacity: 0, x: -20 }}
+   499→   499→            className="flex flex-col gap-2.5"
+   500→   500→          >
+   501→   501→            <div className="text-center">
+   502→   502→              <h2 className="text-lg font-extrabold mt-0.5">Live Round</h2>
+   503→   503→            </div>
+   504→   504→
+   505→   505→            {/* Active bet banner */}
+   506→   506→            <div className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-bold ${
+   507→   507→              activeBet.direction === "UP" ? "border-bull/50 bg-bull/10 text-bull" : "border-bear/50 bg-bear/10 text-bear"
+   508→   508→            }`}>
+   509→   509→              <span className="flex items-center gap-1">
+   510→   510→                {activeBet.direction === "UP" ? <ArrowUpRight className="size-4" /> : <ArrowDownRight className="size-4" />}
+   511→   511→                {activeBet.direction} prediction live
+   512→   512→              </span>
+   513→   513→              <span className="flex items-center gap-1">
+   514→   514→                <span className="size-1.5 rounded-full bg-bull animate-pulse" />
+   515→   515→                LIVE
+   516→   516→              </span>
+   517→   517→            </div>
+   518→   518→
+   519→   519→            {/* Coin + Price */}
+   520→   520→            <div className="flex items-start justify-between">
+   521→   521→              <div>
+   522→   522→                <p className="flex items-center gap-1.5 text-sm font-bold">
+   523→   523→                  <span className={`size-6 flex items-center justify-center rounded-full text-xs font-bold ${coinIconBg(displayCoin)}`}>
+   524→   524→                    {coinData.icon}
+   525→   525→                  </span>
+   526→   526→                  {coinData.label}
+   527→   527→                </p>
+   528→   528→                <p className="text-3xl font-extrabold tabular-nums mt-1">
+   529→   529→                  {mounted && currentPrice > 0 ? `$${formatPrice(currentPrice, displayCoin)}` : "--.--"}
+   530→   530→                  <span className="text-sm font-semibold text-muted-foreground ml-1">USDT</span>
+   531→   531→                </p>
+   532→   532→              </div>
+   533→   533→              <span className="flex items-center gap-1 rounded-md border border-bull/40 bg-bull/10 px-2 py-1 text-xs font-bold text-bull">
+   534→   534→                <span className="size-1.5 rounded-full bg-bull animate-pulse" /> LIVE
+   535→   535→              </span>
+   536→   536→            </div>
+   537→   537→
+   538→   538→            {/* Chart with entry price line */}
+   539→   539→            <div className="relative rounded-xl border border-border bg-panel p-2">
+   540→   540→              <PriceChart
+   541→   541→                points={history.slice(-40)}
+   542→   542→                className="h-44 w-full"
+   543→   543→                entryPrice={activeBet.round.entryPrice}
+   544→   544→                direction={activeBet.direction}
+   545→   545→              />
+   546→   546→            </div>
+   547→   547→
+   548→   548→            {/* Timer */}
+   549→   549→            <div className={`flex items-center justify-between rounded-xl border p-3 ${
+   550→   550→              currentRound && currentRound.timeLeft <= 10
+   551→   551→                ? "border-bear/60 bg-bear/10"
+   552→   552→                : "border-bull/40 bg-panel"
+   553→   553→            }`}>
+   554→   554→              <div className="flex items-center gap-3">
+   555→   555→                <span className={`flex size-10 items-center justify-center rounded-full border ${
+   556→   556→                  currentRound && currentRound.timeLeft <= 10
+   557→   557→                    ? "border-bear text-bear glow-red"
+   558→   558→                    : "border-bull/50 text-bull glow-green"
+   559→   559→                }`}>
+   560→   560→                  <Timer className="size-5" />
+   561→   561→                </span>
+   562→   562→                <div>
+   563→   563→                  <p className="text-[10px] font-semibold tracking-wide text-muted-foreground">TIME REMAINING</p>
+   564→   564→                  <p className={`text-2xl font-extrabold tabular-nums ${
+   565→   565→                    currentRound && currentRound.timeLeft <= 10 ? "text-bear" : "text-bull"
+   566→   566→                  }`}>
+   567→   567→                    {currentRound ? formatClock(currentRound.timeLeft) : "--:--"}
+   568→   568→                  </p>
+   569→   569→                </div>
+   570→   570→              </div>
+   571→   571→              <div className="text-right">
+   572→   572→                <p className="text-[10px] font-semibold text-muted-foreground">ENTRY</p>
+   573→   573→                <p className="text-sm font-bold tabular-nums">${formatPrice(activeBet.round.entryPrice, displayCoin)}</p>
+   574→   574→              </div>
+   575→   575→            </div>
+   576→   576→
+   577→   577→            {/* Bet details */}
+   578→   578→            <div className="grid grid-cols-3 gap-2">
+   579→   579→              <div className="rounded-xl border border-border bg-card p-3 text-center">
+   580→   580→                <p className="text-[9px] font-semibold text-muted-foreground">BET</p>
+   581→   581→                <p className="text-sm font-extrabold">{fmt(activeBet.amount, 2)}</p>
+   582→   582→              </div>
+   583→   583→              <div className="rounded-xl border border-border bg-card p-3 text-center">
+   584→   584→                <p className="text-[9px] font-semibold text-muted-foreground">DIRECTION</p>
+   585→   585→                <p className={`text-sm font-extrabold ${activeBet.direction === "UP" ? "text-bull" : "text-bear"}`}>
+   586→   586→                  {activeBet.direction}
+   587→   587→                </p>
+   588→   588→              </div>
+   589→   589→              <div className="rounded-xl border border-border bg-card p-3 text-center">
+   590→   590→                <p className="text-[9px] font-semibold text-muted-foreground">PAYOUT</p>
+   591→   591→                <p className="text-sm font-extrabold text-bull">{fmt(activeBet.potentialPayout, 2)}</p>
+   592→   592→              </div>
+   593→   593→            </div>
+   594→   594→          </motion.div>
+   595→   595→        )}
+   596→   596→
+   597→   597→        {/* ====== RESULT ====== */}
+   598→   598→        {effectiveStep === "result" && lastResult && (
+   599→   599→          <motion.div
+   600→   600→            key="result"
+   601→   601→            initial={{ opacity: 0, scale: 0.9 }}
+   602→   602→            animate={{ opacity: 1, scale: 1 }}
+   603→   603→            className="flex flex-col gap-3 pt-4"
+   604→   604→          >
+   605→   605→            <div className="text-center">
+   606→   606→              <motion.div
+   607→   607→                initial={{ scale: 0 }}
+   608→   608→                animate={{ scale: 1 }}
+   609→   609→                transition={{ type: "spring", stiffness: 300, damping: 15, delay: 0.2 }}
+   610→   610→                className={`mx-auto flex size-24 items-center justify-center rounded-full ${
+   611→   611→                  lastResult.won ? "bg-bull/20 glow-green" : "bg-bear/20 glow-red"
+   612→   612→                }`}
+   613→   613→              >
+   614→   614→                {lastResult.won ? (
+   615→   615→                  <ArrowUpRight className={`size-12 ${lastResult.wentUp ? "text-bull" : "text-bear"}`} />
+   616→   616→                ) : (
+   617→   617→                  <ArrowDownRight className={`size-12 ${lastResult.wentUp ? "text-bull" : "text-bear"}`} />
+   618→   618→                )}
+   619→   619→              </motion.div>
+   620→   620→
+   621→   621→              <motion.h2
+   622→   622→                initial={{ opacity: 0, y: 10 }}
+   623→   623→                animate={{ opacity: 1, y: 0 }}
+   624→   624→                transition={{ delay: 0.4 }}
+   625→   625→                className={`mt-4 text-3xl font-extrabold ${lastResult.won ? "text-bull" : "text-bear"}`}
+   626→   626→              >
+   627→   627→                {lastResult.won ? "YOU WON!" : "YOU LOST"}
+   628→   628→              </motion.h2>
+   629→   629→
+   630→   630→              {lastResult.won && (
+   631→   631→                <motion.p
+   632→   632→                  initial={{ opacity: 0, y: 10 }}
+   633→   633→                  animate={{ opacity: 1, y: 0 }}
+   634→   634→                  transition={{ delay: 0.6 }}
+   635→   635→                  className="mt-2 text-2xl font-extrabold text-bull text-glow-green"
+   636→   636→                >
+   637→   637→                  {fmt(lastResult.payout, 2)}
+   638→   638→                </motion.p>
+   639→   639→              )}
+   640→   640→            </div>
+   641→   641→
+   642→   642→            {/* Server Price Comparison */}
+   643→   643→            <div className="rounded-2xl border border-border bg-card p-4">
+   644→   644→              <p className="text-center text-[10px] font-semibold tracking-widest text-muted-foreground mb-3">
+   645→   645→                SERVER PRICE COMPARISON
+   646→   646→              </p>
+   647→   647→              <div className="flex items-center justify-between">
+   648→   648→                <div className="text-center">
+   649→   649→                  <p className="text-[9px] font-semibold text-muted-foreground">ENTRY PRICE</p>
+   650→   650→                  <p className="text-lg font-bold tabular-nums">
+   651→   651→                    ${formatPrice(lastResult.entryPrice, lastResult.coin)}
+   652→   652→                  </p>
+   653→   653→                </div>
+   654→   654→                <div className="flex flex-col items-center gap-1">
+   655→   655→                  <span className={`text-lg ${getPriceChangeColor(lastResult.entryPrice, lastResult.exitPrice)}`}>
+   656→   656→                    {lastResult.wentUp ? "↑" : "↓"}
+   657→   657→                  </span>
+   658→   658→                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+   659→   659→                    lastResult.wentUp ? "bg-bull/15 text-bull" : "bg-bear/15 text-bear"
+   660→   660→                  }`}>
+   661→   661→                    {lastResult.wentUp ? "WENT UP" : "WENT DOWN"}
+   662→   662→                  </span>
+   663→   663→                </div>
+   664→   664→                <div className="text-center">
+   665→   665→                  <p className="text-[9px] font-semibold text-muted-foreground">EXIT PRICE</p>
+   666→   666→                  <p className={`text-lg font-bold tabular-nums ${getPriceChangeColor(lastResult.entryPrice, lastResult.exitPrice)}`}>
+   667→   667→                    ${formatPrice(lastResult.exitPrice, lastResult.coin)}
+   668→   668→                  </p>
+   669→   669→                </div>
+   670→   670→              </div>
+   671→   671→              <div className="mt-3 text-center">
+   672→   672→                <span className={`text-xs font-bold ${lastResult.wentUp ? "text-bull" : "text-bear"}`}>
+   673→   673→                  {lastResult.wentUp ? "+" : ""}
+   674→   674→                  {((lastResult.exitPrice - lastResult.entryPrice) / lastResult.entryPrice * 100).toFixed(3)}%
+   675→   675→                  change
+   676→   676→                </span>
+   677→   677→              </div>
+   678→   678→            </div>
+   679→   679→
+   680→   680→            {/* Prediction vs Result */}
+   681→   681→            <div className="rounded-xl border border-border bg-card p-3">
+   682→   682→              <div className="flex items-center justify-between">
+   683→   683→                <span className="text-xs text-muted-foreground">Your Prediction</span>
+   684→   684→                <span className={`font-extrabold flex items-center gap-1 ${lastResult.direction === "UP" ? "text-bull" : "text-bear"}`}>
+   685→   685→                  {lastResult.direction === "UP" ? <ArrowUpRight className="size-4" /> : <ArrowDownRight className="size-4" />}
+   686→   686→                  {lastResult.direction}
+   687→   687→                </span>
+   688→   688→              </div>
+   689→   689→              <div className="border-t border-border my-2" />
+   690→   690→              <div className="flex items-center justify-between">
+   691→   691→                <span className="text-xs text-muted-foreground">Result</span>
+   692→   692→                <span className={`font-extrabold ${lastResult.won ? "text-bull" : "text-bear"}`}>
+   693→   693→                  {lastResult.won ? "WIN ✓" : "LOSE ✗"}
+   694→   694→                </span>
+   695→   695→              </div>
+   696→   696→            </div>
+   697→   697→
+   698→   698→            {/* Updated Balance */}
+   699→   699→            <div className="rounded-xl border border-border bg-card p-3 text-center">
+   700→   700→              <p className="text-[10px] font-semibold text-muted-foreground">UPDATED BALANCE</p>
+   701→   701→              <p className="text-xl font-extrabold">{fmt(balance, 2)}</p>
+   702→   702→            </div>
+   703→   703→
+   704→   704→            {/* Play again */}
+   705→   705→            <motion.button
+   706→   706→              onClick={handlePlayAgain}
+   707→   707→              className="flex items-center justify-center gap-2 rounded-xl bg-bull py-3.5 text-sm font-bold text-black glow-green"
+   708→   708→              whileTap={{ scale: 0.97 }}
+   709→   709→            >
+   710→   710→              <TrendingUp className="size-4" /> PREDICT AGAIN
+   711→   711→            </motion.button>
+   712→   712→
+   713→   713→            <button
+   714→   714→              onClick={() => onNavigate("wallet")}
+   715→   715→              className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card py-3 text-sm font-bold text-foreground"
+   716→   716→            >
+   717→   717→              <Plus className="size-4" /> ADD FUNDS
+   718→   718→            </button>
+   719→   719→          </motion.div>
+   720→   720→        )}
+   721→   721→      </AnimatePresence>
+   722→   722→
+   723→   723→      {/* Premium Upsell Modal */}
+   724→   724→      <AnimatePresence>
+   725→   725→        {showPremiumModal && (
+   726→   726→          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={() => setShowPremiumModal(false)}>
+   727→   727→            <motion.div
+   728→   728→              className="mx-auto w-full max-w-sm overflow-hidden rounded-2xl border border-gold/40 bg-panel"
+   729→   729→              onClick={(e) => e.stopPropagation()}
+   730→   730→              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+   731→   731→              animate={{ opacity: 1, scale: 1, y: 0 }}
+   732→   732→              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+   733→   733→              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+   734→   734→            >
+   735→   735→              <div className="relative bg-gradient-to-br from-gold/20 via-gold/10 to-transparent p-6 text-center">
+   736→   736→                <motion.div
+   737→   737→                  initial={{ scale: 0 }}
+   738→   738→                  animate={{ scale: 1 }}
+   739→   739→                  transition={{ type: "spring", delay: 0.1 }}
+   740→   740→                  className="mx-auto flex size-16 items-center justify-center rounded-full bg-gold/20"
+   741→   741→                >
+   742→   742→                  <Zap className="size-8 text-gold" />
+   743→   743→                </motion.div>
+   744→   744→                <h3 className="mt-3 text-xl font-extrabold text-gold">UNLIMITED PREDICTIONS</h3>
+   745→   745→                <p className="mt-1 text-xs text-muted-foreground">You&apos;ve used {dailyPredictions}/{dailyLimit} free predictions today</p>
+   746→   746→              </div>
+   747→   747→
+   748→   748→              <div className="p-4 space-y-3">
+   749→   749→                <Feature icon="🔮" text="Unlimited predictions" />
+   750→   750→                <Feature icon="⚡" text="Priority round access" />
+   751→   751→                <Feature icon="🚫" text="No ads ever" />
+   752→   752→                <Feature icon="📊" text="Advanced AI insights" />
+   753→   753→                <Feature icon="💰" text="1.8x payout multiplier" />
+   754→   754→              </div>
+   755→   755→
+   756→   756→              <div className="px-4 pb-2 space-y-2">
+   757→   757→                <PremiumPlanButton
+   758→   758→                  label="Monthly"
+   759→   759→                  price="$9.99/mo"
+   760→   760→                  plan="monthly"
+   761→   761→                  onActivate={activatePremium}
+   762→   762→                  onClose={() => setShowPremiumModal(false)}
+   763→   763→                />
+   764→   764→                <PremiumPlanButton
+   765→   765→                  label="Yearly"
+   766→   766→                  price="$79.99/yr"
+   767→   767→                  plan="yearly"
+   768→   768→                  badge="SAVE 33%"
+   769→   769→                  onActivate={activatePremium}
+   770→   770→                  onClose={() => setShowPremiumModal(false)}
+   771→   771→                />
+   772→   772→              </div>
+   773→   773→
+   774→   774→              <div className="p-4 pt-2 text-center">
+   775→   775→                <button
+   776→   776→                  onClick={() => setShowPremiumModal(false)}
+   777→   777→                  className="text-xs text-muted-foreground hover:text-foreground transition"
+   778→   778→                >
+   779→   779→                  Maybe later
+   780→   780→                </button>
+   781→   781→              </div>
+   782→   782→            </motion.div>
+   783→   783→          </div>
+   784→   784→        )}
+   785→   785→      </AnimatePresence>
+   786→   786→    </div>
+   787→   787→  )
+   788→   788→}
+   789→   789→
+   790→   790→function Feature({ icon, text }: { icon: string; text: string }) {
+   791→   791→  return (
+   792→   792→    <div className="flex items-center gap-3 text-sm">
+   793→   793→      <span className="text-base">{icon}</span>
+   794→   794→      <span className="font-semibold">{text}</span>
+   795→   795→    </div>
+   796→   796→  )
+   797→   797→}
+   798→   798→
+   799→   799→function PremiumPlanButton({
+   800→   800→  label,
+   801→   801→  price,
+   802→   802→  plan,
+   803→   803→  badge,
+   804→   804→  onActivate,
+   805→   805→  onClose,
+   806→   806→}: {
+   807→   807→  label: string
+   808→   808→  price: string
+   809→   809→  plan: "monthly" | "yearly"
+   810→   810→  badge?: string
+   811→   811→  onActivate: (plan: "monthly" | "yearly") => Promise<{ success: boolean }>
+   812→   812→  onClose: () => void
+   813→   813→}) {
+   814→   814→  const [loading, setLoading] = useState(false)
+   815→   815→
+   816→   816→  const handleActivate = async () => {
+   817→   817→    setLoading(true)
+   818→   818→    const result = await onActivate(plan)
+   819→   819→    setLoading(false)
+   820→   820→    if (result.success) {
+   821→   821→      onClose()
+   822→   822→    }
+   823→   823→  }
+   824→   824→
+   825→   825→  return (
+   826→   826→    <motion.button
+   827→   827→      onClick={handleActivate}
+   828→   828→      disabled={loading}
+   829→   829→      className={`relative flex w-full items-center justify-between rounded-xl border px-4 py-3.5 text-left transition disabled:opacity-60 ${
+   830→   830→        badge ? "border-gold/50 bg-gold/10" : "border-border bg-card"
+   831→   831→      }`}
+   832→   832→      whileTap={{ scale: 0.97 }}
+   833→   833→    >
+   834→   834→      {badge && (
+   835→   835→        <span className="absolute -top-2 right-3 rounded-md bg-gold px-2 py-0.5 text-[9px] font-bold text-black">
+   836→   836→          {badge}
+   837→   837→        </span>
+   838→   838→      )}
+   839→   839→      <div>
+   840→   840→        <p className="font-bold">{label}</p>
+   841→   841→        <p className="text-xs text-muted-foreground">Cancel anytime</p>
+   842→   842→      </div>
+   843→   843→      <div className="flex items-center gap-2">
+   844→   844→        <span className="text-lg font-extrabold text-bull">{price}</span>
+   845→   845→        {loading && <span className="size-4 animate-spin rounded-full border-2 border-gold border-t-transparent" />}
+   846→   846→      </div>
+   847→   847→    </motion.button>
+   848→   848→  )
+   849→   849→}
+   850→   850→

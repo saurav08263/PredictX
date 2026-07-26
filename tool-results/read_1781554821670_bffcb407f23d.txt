@@ -1,0 +1,893 @@
+     1→"use client"
+     2→
+     3→import {
+     4→  createContext,
+     5→  useContext,
+     6→  useEffect,
+     7→  useRef,
+     8→  useState,
+     9→  useCallback,
+    10→  useSyncExternalStore,
+    11→  type ReactNode,
+    12→} from "react"
+    13→import { io as socketIO, Socket } from "socket.io-client"
+    14→
+    15→/* ---------------- Constants ---------------- */
+    16→
+    17→export type Coin = "BTCUSDT" | "ETHUSDT" | "SOLUSDT"
+    18→export type Duration = 5 | 10 | 20 | 30 | 40 | 50 | 60
+    19→
+    20→export const COINS: { id: Coin; label: string; icon: string }[] = [
+    21→  { id: "BTCUSDT", label: "BTC/USDT", icon: "₿" },
+    22→  { id: "ETHUSDT", label: "ETH/USDT", icon: "Ξ" },
+    23→  { id: "SOLUSDT", label: "SOL/USDT", icon: "◎" },
+    24→]
+    25→
+    26→export const DURATIONS: { value: Duration; label: string }[] = [
+    27→  { value: 5, label: "5s" },
+    28→  { value: 10, label: "10s" },
+    29→  { value: 20, label: "20s" },
+    30→  { value: 30, label: "30s" },
+    31→  { value: 40, label: "40s" },
+    32→  { value: 50, label: "50s" },
+    33→  { value: 60, label: "1m" },
+    34→]
+    35→
+    36→export const AMOUNT_OPTIONS = [100, 500, 1000]
+    37→
+    38→/* ---------------- Countries / currencies ---------------- */
+    39→
+    40→export type Country = {
+    41→  code: string
+    42→  name: string
+    43→  symbol: string
+    44→  locale: string
+    45→}
+    46→
+    47→export const COUNTRIES: Country[] = [
+    48→  { code: "IN", name: "India", symbol: "₹", locale: "en-IN" },
+    49→  { code: "US", name: "United States", symbol: "$", locale: "en-US" },
+    50→  { code: "GB", name: "United Kingdom", symbol: "£", locale: "en-GB" },
+    51→  { code: "EU", name: "Eurozone", symbol: "€", locale: "de-DE" },
+    52→  { code: "AE", name: "United Arab Emirates", symbol: "AED ", locale: "en-US" },
+    53→  { code: "NG", name: "Nigeria", symbol: "₦", locale: "en-US" },
+    54→  { code: "BR", name: "Brazil", symbol: "R$", locale: "pt-BR" },
+    55→  { code: "JP", name: "Japan", symbol: "¥", locale: "ja-JP" },
+    56→  { code: "RU", name: "Russia", symbol: "₽", locale: "ru-RU" },
+    57→  { code: "ZA", name: "South Africa", symbol: "R", locale: "en-ZA" },
+    58→]
+    59→
+    60→/* ---------------- Types ---------------- */
+    61→
+    62→export type ActiveBet = {
+    63→  id: string
+    64→  direction: "UP" | "DOWN"
+    65→  amount: number
+    66→  multiplier: number
+    67→  potentialPayout: number
+    68→  round: {
+    69→    roundId: string
+    70→    coin: string
+    71→    duration: number
+    72→    entryPrice: number
+    73→  }
+    74→  createdAt: string
+    75→} | null
+    76→
+    77→export type BetHistory = {
+    78→  id: string
+    79→  direction: string
+    80→  amount: number
+    81→  multiplier: number
+    82→  status: string
+    83→  payout: number
+    84→  round: {
+    85→    roundId: string
+    86→    coin: string
+    87→    duration: number
+    88→    entryPrice: number
+    89→    exitPrice: number | null
+    90→    status: string
+    91→  }
+    92→  createdAt: string
+    93→}
+    94→
+    95→export type Transaction = {
+    96→  id: string
+    97→  type: string
+    98→  amount: number
+    99→  status: string
+   100→  method?: string | null
+   101→  balanceBefore: number
+   102→  balanceAfter: number
+   103→  createdAt: string
+   104→}
+   105→
+   106→export type RoundInfo = {
+   107→  roundId: string
+   108→  coin: Coin
+   109→  duration: number
+   110→  timeLeft: number
+   111→  entryPrice: number
+   112→  currentPrice: number
+   113→}
+   114→
+   115→export type RoundResult = {
+   116→  roundId: string
+   117→  coin: string
+   118→  direction: "UP" | "DOWN"
+   119→  entryPrice: number
+   120→  exitPrice: number
+   121→  wentUp: boolean
+   122→  won: boolean
+   123→  amount: number
+   124→  payout: number
+   125→} | null
+   126→
+   127→export type WinEvent = {
+   128→  amount: number
+   129→  direction: "UP" | "DOWN"
+   130→  coin: string
+   131→} | null
+   132→
+   133→type Toast = { id: number; msg: string; tone: "win" | "lose" | "info" }
+   134→
+   135→/* ---------------- Store Type ---------------- */
+   136→
+   137→type Store = {
+   138→  // User
+   139→  userId: string | null
+   140→  userName: string
+   141→  country: Country
+   142→  setCountry: (c: Country) => void
+   143→  fmt: (n: number, decimals?: number) => string
+   144→
+   145→  // Prices (from WebSocket or REST fallback)
+   146→  prices: Record<Coin, number>
+   147→  priceHistory: Record<Coin, number[]>
+   148→  mounted: boolean
+   149→  wsConnected: boolean
+   150→
+   151→  // Round info (from WebSocket or REST)
+   152→  currentRound: RoundInfo | null
+   153→
+   154→  // User financials (from API)
+   155→  balance: number
+   156→  winnings: number
+   157→  profit: number
+   158→  bonus: number
+   159→  wins: number
+   160→  totalBets: number
+   161→  winRate: number
+   162→
+   163→  // Active bet (from API)
+   164→  activeBet: ActiveBet
+   165→
+   166→  // Last round result (from WebSocket round:end or REST polling)
+   167→  lastResult: RoundResult
+   168→
+   169→  // Bet history (from API)
+   170→  recentBets: BetHistory[]
+   171→
+   172→  // Transactions (from API)
+   173→  transactions: Transaction[]
+   174→
+   175→  // Actions
+   176→  placeBet: (direction: "UP" | "DOWN", coin: Coin, duration: Duration, amount: number) => Promise<{ success: boolean; error?: string }>
+   177→  deposit: (n: number, method?: string) => Promise<void>
+   178→  withdraw: (n: number, method?: string) => Promise<void>
+   179→  refreshUser: () => Promise<void>
+   180→  refreshBets: () => Promise<void>
+   181→  refreshTransactions: () => Promise<void>
+   182→  fetchRoundInfo: (coin: Coin, duration: Duration) => Promise<RoundInfo | null>
+   183→
+   184→  // Win celebration
+   185→  winEvent: WinEvent
+   186→  clearWinEvent: () => void
+   187→
+   188→  // Clear last result
+   189→  clearLastResult: () => void
+   190→
+   191→  // Toasts
+   192→  toasts: Toast[]
+   193→}
+   194→
+   195→const CryptoContext = createContext<Store | null>(null)
+   196→
+   197→const emptySubscribe = () => () => {}
+   198→function useHydrated(): boolean {
+   199→  return useSyncExternalStore(
+   200→    emptySubscribe,
+   201→    () => true,
+   202→    () => false,
+   203→  )
+   204→}
+   205→
+   206→const MAX_HISTORY = 60
+   207→
+   208→export function CryptoProvider({ children }: { children: ReactNode }) {
+   209→  const mounted = useHydrated()
+   210→  const [country, setCountry] = useState<Country>(COUNTRIES[0])
+   211→
+   212→  // User
+   213→  const [userId, setUserId] = useState<string | null>(null)
+   214→  const [userName, setUserName] = useState("Trader")
+   215→  const [balance, setBalance] = useState(0)
+   216→  const [winnings, setWinnings] = useState(0)
+   217→  const [profit, setProfit] = useState(0)
+   218→  const [bonus, setBonus] = useState(0)
+   219→  const [wins, setWins] = useState(0)
+   220→  const [totalBets, setTotalBets] = useState(0)
+   221→  const [winRate, setWinRate] = useState(0)
+   222→
+   223→  // Prices from WebSocket or REST
+   224→  const [prices, setPrices] = useState<Record<Coin, number>>({
+   225→    BTCUSDT: 0,
+   226→    ETHUSDT: 0,
+   227→    SOLUSDT: 0,
+   228→  })
+   229→  const [priceHistory, setPriceHistory] = useState<Record<Coin, number[]>>({
+   230→    BTCUSDT: [],
+   231→    ETHUSDT: [],
+   232→    SOLUSDT: [],
+   233→  })
+   234→  const [currentRound, setCurrentRound] = useState<RoundInfo | null>(null)
+   235→  const [wsConnected, setWsConnected] = useState(false)
+   236→
+   237→  // Bet state
+   238→  const [activeBet, setActiveBet] = useState<ActiveBet>(null)
+   239→  const [recentBets, setRecentBets] = useState<BetHistory[]>([])
+   240→  const [transactions, setTransactions] = useState<Transaction[]>([])
+   241→
+   242→  // Round result (entry vs exit price comparison)
+   243→  const [lastResult, setLastResult] = useState<RoundResult>(null)
+   244→  const clearLastResult = useCallback(() => setLastResult(null), [])
+   245→
+   246→  // Win event
+   247→  const [winEvent, setWinEvent] = useState<WinEvent>(null)
+   248→  const clearWinEvent = useCallback(() => setWinEvent(null), [])
+   249→
+   250→  // Toasts
+   251→  const [toasts, setToasts] = useState<Toast[]>([])
+   252→  const pushToast = useCallback((msg: string, tone: Toast["tone"]) => {
+   253→    const id = Date.now() + Math.random()
+   254→    setToasts((t) => [...t, { id, msg, tone }])
+   255→    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500)
+   256→  }, [])
+   257→
+   258→  // Refs to avoid stale closures
+   259→  const socketRef = useRef<Socket | null>(null)
+   260→  const roundSubRef = useRef<string>("")
+   261→  const activeBetRef = useRef<ActiveBet>(null)
+   262→  const userIdRef = useRef<string | null>(null)
+   263→  const countryRef = useRef<Country>(country)
+   264→  const wsConnectedRef = useRef(false)
+   265→  const currentRoundRef = useRef<RoundInfo | null>(null)
+   266→
+   267→  // Keep refs in sync
+   268→  useEffect(() => { activeBetRef.current = activeBet }, [activeBet])
+   269→  useEffect(() => { userIdRef.current = userId }, [userId])
+   270→  useEffect(() => { countryRef.current = country }, [country])
+   271→  useEffect(() => { wsConnectedRef.current = wsConnected }, [wsConnected])
+   272→  useEffect(() => { currentRoundRef.current = currentRound }, [currentRound])
+   273→
+   274→  // --- Helper: Update price history from any source ---
+   275→  const updatePriceHistory = useCallback((newPrices: Record<Coin, number>) => {
+   276→    setPriceHistory((prev) => {
+   277→      const updated = { ...prev }
+   278→      for (const coin of ["BTCUSDT", "ETHUSDT", "SOLUSDT"] as Coin[]) {
+   279→        if (newPrices[coin] > 0) {
+   280→          const arr = [...(prev[coin] || []), newPrices[coin]]
+   281→          if (arr.length > MAX_HISTORY) arr.shift()
+   282→          updated[coin] = arr
+   283→        }
+   284→      }
+   285→      return updated
+   286→    })
+   287→  }, [])
+   288→
+   289→  // --- Initialize User ---
+   290→  useEffect(() => {
+   291→    if (!mounted) return
+   292→    fetch("/api/user")
+   293→      .then((r) => r.json())
+   294→      .then((data) => {
+   295→        setUserId(data.id)
+   296→        setUserName(data.name)
+   297→        setBalance(data.balance)
+   298→        setWinnings(data.winnings)
+   299→        setProfit(data.profit)
+   300→        setBonus(data.bonus)
+   301→        setWins(data.wins)
+   302→        setTotalBets(data.totalBets)
+   303→        setWinRate(data.winRate)
+   304→      })
+   305→      .catch(console.error)
+   306→  }, [mounted])
+   307→
+   308→  // --- Subscribe to a specific coin+duration round ---
+   309→  const subscribeToRound = useCallback((coin: Coin, duration: Duration) => {
+   310→    const key = `${coin}-${duration}`
+   311→    roundSubRef.current = key
+   312→    socketRef.current?.emit("round:subscribe", { coin, duration })
+   313→  }, [])
+   314→
+   315→  // --- Fetch round info via REST API (works without WebSocket) ---
+   316→  const fetchRoundInfo = useCallback(async (coin: Coin, duration: Duration): Promise<RoundInfo | null> => {
+   317→    try {
+   318→      const res = await fetch(`/api/round/current?coin=${coin}&duration=${duration}`)
+   319→      if (res.ok) {
+   320→        const data = await res.json()
+   321→        const info: RoundInfo = {
+   322→          roundId: data.roundId,
+   323→          coin: data.coin as Coin,
+   324→          duration: data.duration,
+   325→          timeLeft: data.timeLeft,
+   326→          entryPrice: data.entryPrice,
+   327→          currentPrice: data.currentPrice || data.entryPrice,
+   328→        }
+   329→        // Update current round state
+   330→        setCurrentRound(info)
+   331→        return info
+   332→      }
+   333→    } catch {
+   334→      // Silently fail
+   335→    }
+   336→    return null
+   337→  }, [])
+   338→
+   339→  // --- Fetch active bet ---
+   340→  const refreshActiveBet = useCallback(async () => {
+   341→    const uid = userIdRef.current
+   342→    if (!uid) return
+   343→    try {
+   344→      const res = await fetch(`/api/bet/active?userId=${uid}`)
+   345→      if (res.ok) {
+   346→        const data = await res.json()
+   347→        setActiveBet(data.activeBet)
+   348→        if (data.activeBet) {
+   349→          subscribeToRound(
+   350→            data.activeBet.round.coin as Coin,
+   351→            data.activeBet.round.duration as Duration,
+   352→          )
+   353→          // Also try to fetch round info via REST
+   354→          fetchRoundInfo(
+   355→            data.activeBet.round.coin as Coin,
+   356→            data.activeBet.round.duration as Duration,
+   357→          )
+   358→        }
+   359→      }
+   360→    } catch (err) {
+   361→      console.error("Failed to refresh active bet:", err)
+   362→    }
+   363→  }, [subscribeToRound, fetchRoundInfo])
+   364→
+   365→  // --- Refresh user data ---
+   366→  const refreshUser = useCallback(async () => {
+   367→    const uid = userIdRef.current
+   368→    if (!uid) return
+   369→    try {
+   370→      const res = await fetch("/api/user")
+   371→      if (res.ok) {
+   372→        const data = await res.json()
+   373→        setBalance(data.balance)
+   374→        setWinnings(data.winnings)
+   375→        setProfit(data.profit)
+   376→        setBonus(data.bonus)
+   377→        setWins(data.wins)
+   378→        setTotalBets(data.totalBets)
+   379→        setWinRate(data.winRate)
+   380→      }
+   381→    } catch (err) {
+   382→      console.error("Failed to refresh user:", err)
+   383→    }
+   384→  }, [])
+   385→
+   386→  // --- Refresh bet history ---
+   387→  const refreshBets = useCallback(async () => {
+   388→    const uid = userIdRef.current
+   389→    if (!uid) return
+   390→    try {
+   391→      const res = await fetch(`/api/bets?userId=${uid}`)
+   392→      if (res.ok) {
+   393→        const data = await res.json()
+   394→        setRecentBets(data.bets || [])
+   395→      }
+   396→    } catch (err) {
+   397→      console.error("Failed to refresh bets:", err)
+   398→    }
+   399→  }, [])
+   400→
+   401→  // --- Refresh transactions ---
+   402→  const refreshTransactions = useCallback(async () => {
+   403→    const uid = userIdRef.current
+   404→    if (!uid) return
+   405→    try {
+   406→      const res = await fetch(`/api/transactions?userId=${uid}`)
+   407→      if (res.ok) {
+   408→        const data = await res.json()
+   409→        setTransactions(data.transactions || [])
+   410→      }
+   411→    } catch (err) {
+   412→      console.error("Failed to refresh transactions:", err)
+   413→    }
+   414→  }, [])
+   415→
+   416→  // --- REST API price polling fallback ---
+   417→  useEffect(() => {
+   418→    if (!mounted) return
+   419→
+   420→    const fetchPrices = async () => {
+   421→      try {
+   422→        const res = await fetch("/api/prices")
+   423→        if (res.ok) {
+   424→          const data = await res.json()
+   425→          if (data.prices) {
+   426→            const newPrices: Record<Coin, number> = {
+   427→              BTCUSDT: data.prices.BTCUSDT?.price || 0,
+   428→              ETHUSDT: data.prices.ETHUSDT?.price || 0,
+   429→              SOLUSDT: data.prices.SOLUSDT?.price || 0,
+   430→            }
+   431→            setPrices(newPrices)
+   432→            if (!wsConnectedRef.current) {
+   433→              updatePriceHistory(newPrices)
+   434→            }
+   435→          }
+   436→        }
+   437→      } catch {
+   438→        // Silent fail
+   439→      }
+   440→    }
+   441→
+   442→    fetchPrices()
+   443→
+   444→    const interval = setInterval(() => {
+   445→      if (!wsConnectedRef.current) {
+   446→        fetchPrices()
+   447→      }
+   448→    }, 5000)
+   449→
+   450→    return () => clearInterval(interval)
+   451→  }, [mounted, updatePriceHistory])
+   452→
+   453→  // --- REST API round info polling (fallback when WS not connected, and no active bet) ---
+   454→  useEffect(() => {
+   455→    if (!mounted || wsConnected || activeBet) return
+   456→
+   457→    const pollRoundInfo = async () => {
+   458→      const key = roundSubRef.current
+   459→      if (!key) return
+   460→      const [coin, durStr] = key.split("-")
+   461→      const duration = parseInt(durStr, 10) as Duration
+   462→      if (coin && duration) {
+   463→        await fetchRoundInfo(coin as Coin, duration)
+   464→      }
+   465→    }
+   466→
+   467→    // Poll every 3 seconds for round info (when no active bet, for the predict screen timer)
+   468→    const interval = setInterval(pollRoundInfo, 3000)
+   469→    return () => clearInterval(interval)
+   470→  }, [mounted, wsConnected, activeBet, fetchRoundInfo])
+   471→
+   472→  // --- Initialize WebSocket ---
+   473→  useEffect(() => {
+   474→    if (!mounted) return
+   475→
+   476→    const socket = socketIO("/?XTransformPort=3003", {
+   477→      transports: ["websocket"],
+   478→      reconnection: true,
+   479→      reconnectionAttempts: Infinity,
+   480→      reconnectionDelay: 1000,
+   481→    })
+   482→
+   483→    socketRef.current = socket
+   484→
+   485→    socket.on("connect", () => {
+   486→      console.log("🔌 WS Connected")
+   487→      setWsConnected(true)
+   488→    })
+   489→
+   490→    socket.on("disconnect", () => {
+   491→      console.log("🔌 WS Disconnected")
+   492→      setWsConnected(false)
+   493→    })
+   494→
+   495→    socket.on("price:update", (data) => {
+   496→      const newPrices: Record<Coin, number> = {
+   497→        BTCUSDT: data.BTCUSDT,
+   498→        ETHUSDT: data.ETHUSDT,
+   499→        SOLUSDT: data.SOLUSDT,
+   500→      }
+   501→      setPrices(newPrices)
+   502→      updatePriceHistory(newPrices)
+   503→    })
+   504→
+   505→    socket.on("history:update", (data) => {
+   506→      setPriceHistory({
+   507→        BTCUSDT: data.BTCUSDT || [],
+   508→        ETHUSDT: data.ETHUSDT || [],
+   509→        SOLUSDT: data.SOLUSDT || [],
+   510→      })
+   511→    })
+   512→
+   513→    socket.on("round:tick", (data) => {
+   514→      const key = `${data.coin}-${data.duration}`
+   515→      if (key === roundSubRef.current) {
+   516→        setCurrentRound({
+   517→          roundId: data.roundId,
+   518→          coin: data.coin as Coin,
+   519→          duration: data.duration,
+   520→          timeLeft: data.timeLeft,
+   521→          entryPrice: data.entryPrice,
+   522→          currentPrice: data.currentPrice || data.entryPrice,
+   523→        })
+   524→      }
+   525→    })
+   526→
+   527→    socket.on("round:end", (data) => {
+   528→      const key = `${data.coin}-${data.duration}`
+   529→      if (key === roundSubRef.current) {
+   530→        const currentActiveBet = activeBetRef.current
+   531→
+   532→        if (currentActiveBet && currentActiveBet.round.roundId === data.roundId) {
+   533→          const wentUp = data.exitPrice > data.entryPrice
+   534→          const won =
+   535→            (currentActiveBet.direction === "UP" && wentUp) ||
+   536→            (currentActiveBet.direction === "DOWN" && !wentUp)
+   537→          const payout = won ? currentActiveBet.potentialPayout : 0
+   538→
+   539→          setLastResult({
+   540→            roundId: data.roundId,
+   541→            coin: data.coin,
+   542→            direction: currentActiveBet.direction,
+   543→            entryPrice: data.entryPrice,
+   544→            exitPrice: data.exitPrice,
+   545→            wentUp,
+   546→            won,
+   547→            amount: currentActiveBet.amount,
+   548→            payout,
+   549→          })
+   550→
+   551→          const c = countryRef.current
+   552→          if (won) {
+   553→            setWinEvent({
+   554→              amount: currentActiveBet.potentialPayout,
+   555→              direction: currentActiveBet.direction,
+   556→              coin: data.coin,
+   557→            })
+   558→            pushToast(
+   559→              `You WON ${c.symbol}${currentActiveBet.potentialPayout.toLocaleString(c.locale)}! 🎉`,
+   560→              "win",
+   561→            )
+   562→          } else {
+   563→            pushToast("Round lost — try again 💪", "lose")
+   564→          }
+   565→          setActiveBet(null)
+   566→        }
+   567→
+   568→        // Refresh user data from server
+   569→        refreshUser()
+   570→        refreshBets()
+   571→        refreshTransactions()
+   572→      }
+   573→    })
+   574→
+   575→    socket.on("round:new", (data) => {
+   576→      const key = `${data.coin}-${data.duration}`
+   577→      if (key === roundSubRef.current) {
+   578→        setCurrentRound({
+   579→          roundId: data.roundId,
+   580→          coin: data.coin as Coin,
+   581→          duration: data.duration,
+   582→          timeLeft: data.timeLeft,
+   583→          entryPrice: data.entryPrice,
+   584→          currentPrice: data.entryPrice,
+   585→        })
+   586→      }
+   587→    })
+   588→
+   589→    return () => {
+   590→      socket.disconnect()
+   591→    }
+   592→  }, [mounted, updatePriceHistory, pushToast, refreshUser, refreshBets, refreshTransactions])
+   593→
+   594→  // --- Load initial data once userId is available ---
+   595→  useEffect(() => {
+   596→    if (!userId) return
+   597→    const load = async () => {
+   598→      await refreshActiveBet()
+   599→      await refreshBets()
+   600→      await refreshTransactions()
+   601→    }
+   602→    load()
+   603→  }, [userId, refreshActiveBet, refreshBets, refreshTransactions])
+   604→
+   605→  // --- Check for round resolution when active bet exists but WS is not connected ---
+   606→  useEffect(() => {
+   607→    if (!mounted || wsConnected || !activeBet) return
+   608→
+   609→    const checkBetStatus = async () => {
+   610→      const uid = userIdRef.current
+   611→      if (!uid) return
+   612→
+   613→      try {
+   614→        const res = await fetch("/api/bet/check", {
+   615→          method: "POST",
+   616→          headers: { "Content-Type": "application/json" },
+   617→          body: JSON.stringify({ userId: uid }),
+   618→        })
+   619→
+   620→        if (!res.ok) return
+   621→
+   622→        const data = await res.json()
+   623→
+   624→        if (data.resolved && data.result) {
+   625→          // Bet was resolved by the server
+   626→          const r = data.result
+   627→          setLastResult({
+   628→            roundId: r.roundId,
+   629→            coin: r.coin,
+   630→            direction: r.direction,
+   631→            entryPrice: r.entryPrice,
+   632→            exitPrice: r.exitPrice,
+   633→            wentUp: r.wentUp,
+   634→            won: r.won,
+   635→            amount: r.amount,
+   636→            payout: r.payout,
+   637→          })
+   638→
+   639→          if (r.won) {
+   640→            setWinEvent({
+   641→              amount: r.payout,
+   642→              direction: r.direction,
+   643→              coin: r.coin,
+   644→            })
+   645→            pushToast(`You WON ${country.symbol}${r.payout.toLocaleString(country.locale)}! 🎉`, "win")
+   646→          } else {
+   647→            pushToast("Round lost — try again 💪", "lose")
+   648→          }
+   649→          setActiveBet(null)
+   650→          setCurrentRound(null)
+   651→
+   652→          // Refresh all data
+   653→          await refreshUser()
+   654→          await refreshBets()
+   655→          await refreshTransactions()
+   656→        } else if (data.activeBet && data.timeLeft !== undefined) {
+   657→          // Update round info from server
+   658→          setActiveBet(data.activeBet)
+   659→          setCurrentRound({
+   660→            roundId: data.activeBet.round.roundId,
+   661→            coin: data.activeBet.round.coin as Coin,
+   662→            duration: data.activeBet.round.duration,
+   663→            timeLeft: data.timeLeft,
+   664→            entryPrice: data.activeBet.round.entryPrice,
+   665→            currentPrice: data.activeBet.round.entryPrice,
+   666→          })
+   667→        }
+   668→      } catch {
+   669→        // Silent fail
+   670→      }
+   671→    }
+   672→
+   673→    // Check every 2 seconds when we have an active bet but no WS
+   674→    const interval = setInterval(checkBetStatus, 2000)
+   675→    return () => clearInterval(interval)
+   676→  }, [mounted, wsConnected, activeBet, refreshUser, refreshBets, refreshTransactions, pushToast, country])
+   677→
+   678→  // --- Place Bet (API call - server resolves round) ---
+   679→  const placeBet = useCallback(
+   680→    async (direction: "UP" | "DOWN", coin: Coin, duration: Duration, amount: number) => {
+   681→      if (!userId) return { success: false, error: "Not logged in" }
+   682→
+   683→      // Try to get round info if we don't have it
+   684→      let roundInfo = currentRoundRef.current
+   685→      if (!roundInfo) {
+   686→        roundInfo = await fetchRoundInfo(coin, duration)
+   687→      }
+   688→
+   689→      try {
+   690→        const res = await fetch("/api/bet", {
+   691→          method: "POST",
+   692→          headers: { "Content-Type": "application/json" },
+   693→          body: JSON.stringify({
+   694→            userId,
+   695→            direction,
+   696→            amount,
+   697→            coin,
+   698→            duration,
+   699→            // Include round info if available, server will look it up if not
+   700→            ...(roundInfo ? {
+   701→              roundId: roundInfo.roundId,
+   702→              entryPrice: roundInfo.entryPrice,
+   703→            } : {}),
+   704→          }),
+   705→        })
+   706→
+   707→        const data = await res.json()
+   708→
+   709→        if (!res.ok) {
+   710→          pushToast(data.error || "Failed to place bet", "lose")
+   711→          return { success: false, error: data.error }
+   712→        }
+   713→
+   714→        // Update local state
+   715→        setBalance(data.balance)
+   716→        setActiveBet({
+   717→          id: data.id,
+   718→          direction: data.direction,
+   719→          amount: data.amount,
+   720→          multiplier: data.multiplier,
+   721→          potentialPayout: data.potentialPayout,
+   722→          round: {
+   723→            roundId: data.roundId,
+   724→            coin: data.coin,
+   725→            duration: data.duration,
+   726→            entryPrice: data.entryPrice,
+   727→          },
+   728→          createdAt: data.createdAt,
+   729→        })
+   730→
+   731→        pushToast(
+   732→          `${direction} placed: ${country.symbol}${amount.toLocaleString(country.locale)}`,
+   733→          "info",
+   734→        )
+   735→
+   736→        // Refresh transactions
+   737→        refreshTransactions()
+   738→
+   739→        // Subscribe to round updates
+   740→        subscribeToRound(coin, duration)
+   741→
+   742→        return { success: true }
+   743→      } catch {
+   744→        pushToast("Network error — please try again", "lose")
+   745→        return { success: false, error: "Network error" }
+   746→      }
+   747→    },
+   748→    [userId, country, pushToast, refreshTransactions, subscribeToRound, fetchRoundInfo],
+   749→  )
+   750→
+   751→  // --- Deposit (API call) ---
+   752→  const deposit = useCallback(
+   753→    async (n: number, method = "UPI") => {
+   754→      if (!userId || n <= 0) return
+   755→      try {
+   756→        const res = await fetch("/api/wallet/deposit", {
+   757→          method: "POST",
+   758→          headers: { "Content-Type": "application/json" },
+   759→          body: JSON.stringify({ userId, amount: n, method }),
+   760→        })
+   761→        const data = await res.json()
+   762→        if (res.ok) {
+   763→          setBalance(data.balance)
+   764→          pushToast(`Deposited ${country.symbol}${n.toLocaleString(country.locale)}`, "win")
+   765→          refreshTransactions()
+   766→        } else {
+   767→          pushToast(data.error || "Deposit failed", "lose")
+   768→        }
+   769→      } catch {
+   770→        pushToast("Network error — please try again", "lose")
+   771→      }
+   772→    },
+   773→    [userId, country, pushToast, refreshTransactions],
+   774→  )
+   775→
+   776→  // --- Withdraw (API call) ---
+   777→  const withdraw = useCallback(
+   778→    async (n: number, method = "UPI") => {
+   779→      if (!userId || n <= 0) return
+   780→      try {
+   781→        const res = await fetch("/api/wallet/withdraw", {
+   782→          method: "POST",
+   783→          headers: { "Content-Type": "application/json" },
+   784→          body: JSON.stringify({ userId, amount: n, method }),
+   785→        })
+   786→        const data = await res.json()
+   787→        if (res.ok) {
+   788→          setBalance(data.balance)
+   789→          pushToast(`Withdrawal of ${country.symbol}${n.toLocaleString(country.locale)} requested`, "info")
+   790→          refreshTransactions()
+   791→        } else {
+   792→          pushToast(data.error || "Withdrawal failed", "lose")
+   793→        }
+   794→      } catch {
+   795→        pushToast("Network error — please try again", "lose")
+   796→      }
+   797→    },
+   798→    [userId, country, pushToast, refreshTransactions],
+   799→  )
+   800→
+   801→  // --- Format helpers ---
+   802→  const fmt = useCallback(
+   803→    (n: number, decimals = 0) =>
+   804→      country.symbol +
+   805→      n.toLocaleString(country.locale, {
+   806→        minimumFractionDigits: decimals,
+   807→        maximumFractionDigits: decimals,
+   808→      }),
+   809→    [country],
+   810→  )
+   811→
+   812→  const value: Store & { subscribeToRound: (coin: Coin, duration: Duration) => void } = {
+   813→    userId,
+   814→    userName,
+   815→    country,
+   816→    setCountry,
+   817→    fmt,
+   818→    prices,
+   819→    priceHistory,
+   820→    mounted,
+   821→    wsConnected,
+   822→    currentRound,
+   823→    balance,
+   824→    winnings,
+   825→    profit,
+   826→    bonus,
+   827→    wins,
+   828→    totalBets,
+   829→    winRate,
+   830→    activeBet,
+   831→    lastResult,
+   832→    recentBets,
+   833→    transactions,
+   834→    placeBet,
+   835→    deposit,
+   836→    withdraw,
+   837→    refreshUser,
+   838→    refreshBets,
+   839→    refreshTransactions,
+   840→    fetchRoundInfo,
+   841→    winEvent,
+   842→    clearWinEvent,
+   843→    clearLastResult,
+   844→    toasts,
+   845→    subscribeToRound,
+   846→  }
+   847→
+   848→  return <CryptoContext.Provider value={value as any}>{children}</CryptoContext.Provider>
+   849→}
+   850→
+   851→export function useCrypto() {
+   852→  const ctx = useContext(CryptoContext)
+   853→  if (!ctx) throw new Error("useCrypto must be used within CryptoProvider")
+   854→  return ctx
+   855→}
+   856→
+   857→export function formatClock(sec: number) {
+   858→  const m = Math.floor(sec / 60)
+   859→  const s = sec % 60
+   860→  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+   861→}
+   862→
+   863→export function formatPrice(price: number, coin: Coin | string) {
+   864→  if (price === 0) return "--.--"
+   865→  if (coin === "SOLUSDT") return price.toFixed(4)
+   866→  return price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+   867→}
+   868→
+   869→export function timeLabels(count = 6) {
+   870→  const now = new Date()
+   871→  const labels: string[] = []
+   872→  for (let i = count - 1; i >= 0; i--) {
+   873→    const d = new Date(now.getTime() - i * 60_000)
+   874→    labels.push(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`)
+   875→  }
+   876→  return labels
+   877→}
+   878→
+   879→export function priceLabels(history: number[], count = 7) {
+   880→  if (history.length === 0) return Array.from({ length: count }, () => "--.--")
+   881→  const min = Math.min(...history)
+   882→  const max = Math.max(...history)
+   883→  const pad = (max - min) * 0.1 || 100
+   884→  const lo = min - pad
+   885→  const hi = max + pad
+   886→  const labels: string[] = []
+   887→  for (let i = 0; i < count; i++) {
+   888→    const v = hi - ((hi - lo) / (count - 1)) * i
+   889→    labels.push(v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+   890→  }
+   891→  return labels
+   892→}
+   893→

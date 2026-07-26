@@ -1,0 +1,171 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), 'Geist Fallback';
+  --font-mono: var(--font-geist-mono), 'Geist Mono Fallback';
+
+  --color-background: #05080c;
+  --color-foreground: #e8f0f0;
+  --color-card: #0b1117;
+  --color-card-foreground: #e8f0f0;
+  --color-panel: #090e14;
+  --color-muted: #131b22;
+  --color-muted-foreground: #7d8a96;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-bull: #2fe07a;
+  --color-bear: #f23f4b;
+  --color-gold: #f5c518;
+  --color-info: #2f8bff;
+  --color-primary: #2fe07a;
+  --color-primary-foreground: #03110a;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-popover: #0b1117;
+  --color-popover-foreground: #e8f0f0;
+  --color-secondary: #131b22;
+  --color-secondary-foreground: #e8f0f0;
+  --color-accent: #131b22;
+  --color-accent-foreground: #e8f0f0;
+  --color-destructive: #f23f4b;
+  --color-input: rgba(255, 255, 255, 0.12);
+  --color-ring: #2fe07a;
+  --color-chart-1: #2fe07a;
+  --color-chart-2: #f23f4b;
+  --color-chart-3: #f5c518;
+  --color-chart-4: #2f8bff;
+  --color-chart-5: #7d8a96;
+  --color-sidebar-ring: #2fe07a;
+  --color-sidebar-border: rgba(255, 255, 255, 0.08);
+  --color-sidebar-accent-foreground: #e8f0f0;
+  --color-sidebar-accent: #131b22;
+  --color-sidebar-primary-foreground: #03110a;
+  --color-sidebar-primary: #2fe07a;
+  --color-sidebar-foreground: #e8f0f0;
+  --color-sidebar: #090e14;
+
+  --radius: 0.75rem;
+}
+
+html,
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+/* Respect native device safe areas (notch / home indicator) on iOS & Android */
+header {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+nav {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+/* Glow utilities */
+.glow-green {
+  box-shadow: 0 0 18px rgba(47, 224, 122, 0.55), 0 0 4px rgba(47, 224, 122, 0.6);
+}
+.glow-red {
+  box-shadow: 0 0 18px rgba(242, 63, 75, 0.5), 0 0 4px rgba(242, 63, 75, 0.6);
+}
+.glow-gold {
+  box-shadow: 0 0 22px rgba(245, 197, 24, 0.55), 0 0 6px rgba(245, 197, 24, 0.6);
+}
+.glow-info {
+  box-shadow: 0 0 18px rgba(47, 139, 255, 0.45), 0 0 4px rgba(47, 139, 255, 0.5);
+}
+.text-glow-green {
+  text-shadow: 0 0 12px rgba(47, 224, 122, 0.7);
+}
+.text-glow-gold {
+  text-shadow: 0 0 12px rgba(245, 197, 24, 0.7);
+}
+
+/* Pulse animation for live dot */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-live-pulse {
+  animation: live-pulse 1.5s ease-in-out infinite;
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+/* Hide scrollbar for chip rows */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Trading button press effect */
+@keyframes btn-press-up {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+@keyframes btn-press-down {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+
+/* Chip selection shine effect */
+@keyframes chip-shine {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+/* Pulse ring for active states */
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(47, 224, 122, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(47, 224, 122, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(47, 224, 122, 0); }
+}
+.animate-pulse-ring {
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+/* Countdown urgency flash */
+@keyframes urgency-flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.animate-urgency {
+  animation: urgency-flash 0.5s ease-in-out infinite;
+}
+
+/* Win celebration shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(47, 224, 122, 0.1) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}

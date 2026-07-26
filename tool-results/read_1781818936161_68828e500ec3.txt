@@ -1,0 +1,742 @@
+     1→     1→"use client"
+     2→     2→
+     3→     3→import { useState, useEffect, useRef } from "react"
+     4→     4→import Image from "next/image"
+     5→     5→import { motion, AnimatePresence } from "framer-motion"
+     6→     6→import {
+     7→     7→  Crown,
+     8→     8→  Mail,
+     9→     9→  Lock,
+    10→    10→  User,
+    11→    11→  Phone,
+    12→    12→  ArrowRight,
+    13→    13→  Loader2,
+    14→    14→  Eye,
+    15→    15→  EyeOff,
+    16→    16→  ShieldCheck,
+    17→    17→  Zap,
+    18→    18→  TrendingUp,
+    19→    19→  TrendingDown,
+    20→    20→  CheckCircle2,
+    21→    21→  ArrowLeft,
+    22→    22→  Sparkles,
+    23→    23→  Trophy,
+    24→    24→  Wallet,
+    25→    25→  Flame,
+    26→    26→  Star,
+    27→    27→} from "lucide-react"
+    28→    28→import { useCrypto } from "../store"
+    29→    29→
+    30→    30→type Mode = "signin" | "signup"
+    31→    31→type AuthView = "form" | "phone" | "otp"
+    32→    32→
+    33→    33→export function AuthScreen() {
+    34→    34→  const {
+    35→    35→    login,
+    36→    36→    signup,
+    37→    37→    loginWithGoogle,
+    38→    38→    sendOtp,
+    39→    39→    verifyOtp,
+    40→    40→    authLoading,
+    41→    41→    authError,
+    42→    42→  } = useCrypto()
+    43→    43→
+    44→    44→  const [mode, setMode] = useState<Mode>("signin")
+    45→    45→  const [view, setView] = useState<AuthView>("form")
+    46→    46→
+    47→    47→  // Form state
+    48→    48→  const [name, setName] = useState("")
+    49→    49→  const [email, setEmail] = useState("")
+    50→    50→  const [password, setPassword] = useState("")
+    51→    51→  const [showPassword, setShowPassword] = useState(false)
+    52→    52→  const [phone, setPhone] = useState("")
+    53→    53→  const [otp, setOtp] = useState("")
+    54→    54→  const [demoOtp, setDemoOtp] = useState<string | null>(null)
+    55→    55→  const [localError, setLocalError] = useState<string | null>(null)
+    56→    56→  const [resendCooldown, setResendCooldown] = useState(0)
+    57→    57→  const otpInputRef = useRef<HTMLInputElement | null>(null)
+    58→    58→
+    59→    59→  // Resend cooldown timer
+    60→    60→  useEffect(() => {
+    61→    61→    if (resendCooldown <= 0) return
+    62→    62→    const t = setTimeout(() => setResendCooldown((c) => Math.max(0, c - 1)), 1000)
+    63→    63→    return () => clearTimeout(t)
+    64→    64→  }, [resendCooldown])
+    65→    65→
+    66→    66→  const error = localError || authError
+    67→    67→
+    68→    68→  const switchMode = (m: Mode) => {
+    69→    69→    setMode(m)
+    70→    70→    setView("form")
+    71→    71→    setLocalError(null)
+    72→    72→  }
+    73→    73→
+    74→    74→  const handleEmailSubmit = async (e: React.FormEvent) => {
+    75→    75→    e.preventDefault()
+    76→    76→    setLocalError(null)
+    77→    77→
+    78→    78→    if (mode === "signup") {
+    79→    79→      if (!name.trim()) {
+    80→    80→        setLocalError("Please enter your name")
+    81→    81→        return
+    82→    82→      }
+    83→    83→      if (password.length < 6) {
+    84→    84→        setLocalError("Password must be at least 6 characters")
+    85→    85→        return
+    86→    86→      }
+    87→    87→      await signup(name.trim(), email.trim(), password)
+    88→    88→    } else {
+    89→    89→      if (!email.trim() || !password) {
+    90→    90→        setLocalError("Please enter your email and password")
+    91→    91→        return
+    92→    92→      }
+    93→    93→      await login(email.trim(), password)
+    94→    94→    }
+    95→    95→  }
+    96→    96→
+    97→    97→  const handleGoogle = async () => {
+    98→    98→    setLocalError(null)
+    99→    99→    await loginWithGoogle()
+   100→   100→  }
+   101→   101→
+   102→   102→  const handleSendOtp = async () => {
+   103→   103→    setLocalError(null)
+   104→   104→    const digits = phone.replace(/\D/g, "")
+   105→   105→    if (digits.length < 10) {
+   106→   106→      setLocalError("Please enter a valid 10-digit phone number")
+   107→   107→      return
+   108→   108→    }
+   109→   109→    const fullPhone = phone.startsWith("+") ? phone : `+91 ${phone}`
+   110→   110→    const res = await sendOtp(fullPhone)
+   111→   111→    if (res.success && res.otp) {
+   112→   112→      setDemoOtp(res.otp)
+   113→   113→      setView("otp")
+   114→   114→      setResendCooldown(30)
+   115→   115→      setTimeout(() => otpInputRef.current?.focus(), 100)
+   116→   116→    }
+   117→   117→  }
+   118→   118→
+   119→   119→  const handleVerifyOtp = async () => {
+   120→   120→    setLocalError(null)
+   121→   121→    if (otp.length !== 6) {
+   122→   122→      setLocalError("Please enter the 6-digit code")
+   123→   123→      return
+   124→   124→    }
+   125→   125→    const fullPhone = phone.startsWith("+") ? phone : `+91 ${phone}`
+   126→   126→    await verifyOtp(fullPhone, otp)
+   127→   127→  }
+   128→   128→
+   129→   129→  const handleResendOtp = async () => {
+   130→   130→    if (resendCooldown > 0) return
+   131→   131→    setOtp("")
+   132→   132→    setDemoOtp(null)
+   133→   133→    await handleSendOtp()
+   134→   134→  }
+   135→   135→
+   136→   136→  return (
+   137→   137→    <div className="relative mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background text-foreground overflow-hidden">
+   138→   138→      {/* ────────────────────────────────────────────────────────── */}
+   139→   139→      {/* HERO — Bull vs Bear battleground                          */}
+   140→   140→      {/* ────────────────────────────────────────────────────────── */}
+   141→   141→      <div className="relative h-72 overflow-hidden">
+   142→   142→        {/* Background image */}
+   143→   143→        <Image
+   144→   144→          src="/images/bull-bear-hero.png"
+   145→   145→          alt="Bull versus bear crypto battle"
+   146→   146→          fill
+   147→   147→          priority
+   148→   148→          sizes="(max-width: 768px) 100vw, 400px"
+   149→   149→          className="object-cover"
+   150→   150→        />
+   151→   151→        {/* Cinematic gradient overlays */}
+   152→   152→        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-background" />
+   153→   153→        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(5,8,12,0.6)_100%)]" />
+   154→   154→
+   155→   155→        {/* Animated BULL badge (top-left) */}
+   156→   156→        <motion.div
+   157→   157→          className="absolute left-5 top-7 flex items-center gap-1.5 rounded-full border border-bull/40 bg-bull/15 px-3 py-1 backdrop-blur-md"
+   158→   158→          initial={{ x: -40, opacity: 0 }}
+   159→   159→          animate={{ x: 0, opacity: 1 }}
+   160→   160→          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+   161→   161→        >
+   162→   162→          <TrendingUp className="size-3.5 text-bull" />
+   163→   163→          <span className="text-[10px] font-extrabold tracking-wider text-bull">BULL UP</span>
+   164→   164→          <motion.span
+   165→   165→            className="size-1.5 rounded-full bg-bull"
+   166→   166→            animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
+   167→   167→            transition={{ duration: 1.2, repeat: Infinity }}
+   168→   168→          />
+   169→   169→        </motion.div>
+   170→   170→
+   171→   171→        {/* Animated BEAR badge (top-right) */}
+   172→   172→        <motion.div
+   173→   173→          className="absolute right-5 top-7 flex items-center gap-1.5 rounded-full border border-bear/40 bg-bear/15 px-3 py-1 backdrop-blur-md"
+   174→   174→          initial={{ x: 40, opacity: 0 }}
+   175→   175→          animate={{ x: 0, opacity: 1 }}
+   176→   176→          transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+   177→   177→        >
+   178→   178→          <motion.span
+   179→   179→            className="size-1.5 rounded-full bg-bear"
+   180→   180→            animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
+   181→   181→            transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }}
+   182→   182→          />
+   183→   183→          <span className="text-[10px] font-extrabold tracking-wider text-bear">BEAR DOWN</span>
+   184→   184→          <TrendingDown className="size-3.5 text-bear" />
+   185→   185→        </motion.div>
+   186→   186→
+   187→   187→        {/* Centered brand */}
+   188→   188→        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+   189→   189→          {/* Crown logo */}
+   190→   190→          <motion.div
+   191→   191→            initial={{ scale: 0, rotate: -30, opacity: 0 }}
+   192→   192→            animate={{ scale: 1, rotate: 0, opacity: 1 }}
+   193→   193→            transition={{ type: "spring", stiffness: 200, damping: 12, delay: 0.1 }}
+   194→   194→            className="relative mb-2"
+   195→   195→          >
+   196→   196→            <div className="absolute inset-0 rounded-full bg-gold/30 blur-xl" />
+   197→   197→            <div className="relative flex size-14 items-center justify-center rounded-full border border-gold/40 bg-gold/15 backdrop-blur-md glow-gold">
+   198→   198→              <Crown className="size-7 text-gold" />
+   199→   199→            </div>
+   200→   200→          </motion.div>
+   201→   201→
+   202→   202→          {/* Wordmark */}
+   203→   203→          <motion.h1
+   204→   204→            className="text-[28px] font-black leading-none tracking-tight"
+   205→   205→            initial={{ y: 12, opacity: 0 }}
+   206→   206→            animate={{ y: 0, opacity: 1 }}
+   207→   207→            transition={{ delay: 0.25 }}
+   208→   208→          >
+   209→   209→            <span className="text-white drop-shadow-lg">CRYPTO</span>{" "}
+   210→   210→            <span className="text-bull text-glow-green">PREDICTOR</span>
+   211→   211→          </motion.h1>
+   212→   212→
+   213→   213→          {/* Tagline */}
+   214→   214→          <motion.div
+   215→   215→            className="mt-2 flex items-center gap-2"
+   216→   216→            initial={{ opacity: 0 }}
+   217→   217→            animate={{ opacity: 1 }}
+   218→   218→            transition={{ delay: 0.4 }}
+   219→   219→          >
+   220→   220→            <span className="h-px w-6 bg-gradient-to-r from-transparent to-gold/60" />
+   221→   221→            <p className="text-[10px] font-bold tracking-[0.35em] text-white/90">
+   222→   222→              PREDICT · WIN · EARN
+   223→   223→            </p>
+   224→   224→            <span className="h-px w-6 bg-gradient-to-l from-transparent to-gold/60" />
+   225→   225→          </motion.div>
+   226→   226→
+   227→   227→          {/* Live stats strip */}
+   228→   228→          <motion.div
+   229→   229→            className="mt-3 flex items-center gap-3 rounded-full border border-white/10 bg-black/30 px-3 py-1 backdrop-blur-md"
+   230→   230→            initial={{ y: 10, opacity: 0 }}
+   231→   231→            animate={{ y: 0, opacity: 1 }}
+   232→   232→            transition={{ delay: 0.5 }}
+   233→   233→          >
+   234→   234→            <span className="flex items-center gap-1 text-[9px] font-bold text-bull">
+   235→   235→              <span className="size-1.5 rounded-full bg-bull animate-pulse" />
+   236→   236→              4.5L ONLINE
+   237→   237→            </span>
+   238→   238→            <span className="h-2.5 w-px bg-white/20" />
+   239→   239→            <span className="flex items-center gap-1 text-[9px] font-bold text-gold">
+   240→   240→              <Trophy className="size-2.5" />
+   241→   241→              ₹11CR PAID OUT
+   242→   242→            </span>
+   243→   243→          </motion.div>
+   244→   244→        </div>
+   245→   245→      </div>
+   246→   246→
+   247→   247→      {/* ────────────────────────────────────────────────────────── */}
+   248→   248→      {/* FORM AREA                                                  */}
+   249→   249→      {/* ────────────────────────────────────────────────────────── */}
+   250→   250→      <div className="flex flex-1 flex-col px-5 pb-8 pt-5">
+   251→   251→        {/* Welcome heading */}
+   252→   252→        {view !== "otp" && (
+   253→   253→          <motion.div
+   254→   254→            className="mb-4 text-center"
+   255→   255→            initial={{ opacity: 0, y: 8 }}
+   256→   256→            animate={{ opacity: 1, y: 0 }}
+   257→   257→            transition={{ delay: 0.55 }}
+   258→   258→          >
+   259→   259→            <h2 className="text-xl font-extrabold">
+   260→   260→              {mode === "signin" ? "Welcome Back, Trader!" : "Join the Battle!"}
+   261→   261→            </h2>
+   262→   262→            <p className="mt-1 text-xs text-muted-foreground">
+   263→   263→              {mode === "signin"
+   264→   264→                ? "Sign in to continue your winning streak"
+   265→   265→                : "Get ₹10,000 welcome bonus on signup"}
+   266→   266→            </p>
+   267→   267→          </motion.div>
+   268→   268→        )}
+   269→   269→
+   270→   270→        {/* Mode toggle (only on form/phone views) */}
+   271→   271→        {view !== "otp" && (
+   272→   272→          <div className="mb-5 flex rounded-xl border border-border bg-card p-1">
+   273→   273→            <button
+   274→   274→              onClick={() => switchMode("signin")}
+   275→   275→              className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition ${
+   276→   276→                mode === "signin" ? "bg-bull text-black glow-green" : "text-muted-foreground"
+   277→   277→              }`}
+   278→   278→            >
+   279→   279→              SIGN IN
+   280→   280→            </button>
+   281→   281→            <button
+   282→   282→              onClick={() => switchMode("signup")}
+   283→   283→              className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition ${
+   284→   284→                mode === "signup" ? "bg-bull text-black glow-green" : "text-muted-foreground"
+   285→   285→              }`}
+   286→   286→            >
+   287→   287→              SIGN UP
+   288→   288→            </button>
+   289→   289→          </div>
+   290→   290→        )}
+   291→   291→
+   292→   292→        {/* Error message */}
+   293→   293→        <AnimatePresence>
+   294→   294→          {error && (
+   295→   295→            <motion.div
+   296→   296→              initial={{ opacity: 0, y: -10, height: 0 }}
+   297→   297→              animate={{ opacity: 1, y: 0, height: "auto" }}
+   298→   298→              exit={{ opacity: 0, height: 0 }}
+   299→   299→              className="mb-3 flex items-center gap-2 rounded-lg border border-bear/40 bg-bear/10 px-3 py-2 text-xs font-semibold text-bear"
+   300→   300→            >
+   301→   301→              <span className="size-1.5 shrink-0 rounded-full bg-bear" />
+   302→   302→              {error}
+   303→   303→            </motion.div>
+   304→   304→          )}
+   305→   305→        </AnimatePresence>
+   306→   306→
+   307→   307→        <AnimatePresence mode="wait">
+   308→   308→          {/* ═══════════════ FORM VIEW ═══════════════ */}
+   309→   309→          {view === "form" && (
+   310→   310→            <motion.div
+   311→   311→              key="form"
+   312→   312→              initial={{ opacity: 0, x: 20 }}
+   313→   313→              animate={{ opacity: 1, x: 0 }}
+   314→   314→              exit={{ opacity: 0, x: -20 }}
+   315→   315→              transition={{ duration: 0.2 }}
+   316→   316→            >
+   317→   317→              {/* Google sign-in — hero CTA */}
+   318→   318→              <motion.button
+   319→   319→                onClick={handleGoogle}
+   320→   320→                disabled={authLoading}
+   321→   321→                whileTap={{ scale: 0.97 }}
+   322→   322→                className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/15 bg-white py-3.5 text-sm font-bold text-gray-800 shadow-[0_4px_20px_rgba(255,255,255,0.1)] transition disabled:opacity-60"
+   323→   323→              >
+   324→   324→                <GoogleIcon className="size-5" />
+   325→   325→                Continue with Google
+   326→   326→              </motion.button>
+   327→   327→
+   328→   328→              {/* Divider */}
+   329→   329→              <div className="my-4 flex items-center gap-3">
+   330→   330→                <div className="h-px flex-1 bg-border" />
+   331→   331→                <span className="text-[10px] font-bold tracking-widest text-muted-foreground">
+   332→   332→                  OR {mode === "signup" ? "SIGN UP WITH EMAIL" : "SIGN IN WITH EMAIL"}
+   333→   333→                </span>
+   334→   334→                <div className="h-px flex-1 bg-border" />
+   335→   335→              </div>
+   336→   336→
+   337→   337→              {/* Email/password form */}
+   338→   338→              <form onSubmit={handleEmailSubmit} className="space-y-3">
+   339→   339→                {mode === "signup" && (
+   340→   340→                  <InputField
+   341→   341→                    icon={<User className="size-4 text-muted-foreground" />}
+   342→   342→                    type="text"
+   343→   343→                    placeholder="Full name"
+   344→   344→                    value={name}
+   345→   345→                    onChange={setName}
+   346→   346→                    autoComplete="name"
+   347→   347→                  />
+   348→   348→                )}
+   349→   349→                <InputField
+   350→   350→                  icon={<Mail className="size-4 text-muted-foreground" />}
+   351→   351→                  type="email"
+   352→   352→                  placeholder="Email address"
+   353→   353→                  value={email}
+   354→   354→                  onChange={setEmail}
+   355→   355→                  autoComplete="email"
+   356→   356→                />
+   357→   357→                <InputField
+   358→   358→                  icon={<Lock className="size-4 text-muted-foreground" />}
+   359→   359→                  type={showPassword ? "text" : "password"}
+   360→   360→                  placeholder="Password"
+   361→   361→                  value={password}
+   362→   362→                  onChange={setPassword}
+   363→   363→                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
+   364→   364→                  trailingIcon={
+   365→   365→                    <button
+   366→   366→                      type="button"
+   367→   367→                      onClick={() => setShowPassword((s) => !s)}
+   368→   368→                      className="text-muted-foreground hover:text-foreground"
+   369→   369→                      aria-label={showPassword ? "Hide password" : "Show password"}
+   370→   370→                    >
+   371→   371→                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+   372→   372→                    </button>
+   373→   373→                  }
+   374→   374→                />
+   375→   375→
+   376→   376→                <motion.button
+   377→   377→                  type="submit"
+   378→   378→                  disabled={authLoading}
+   379→   379→                  whileTap={{ scale: 0.97 }}
+   380→   380→                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-bull py-3.5 text-sm font-bold text-black glow-green transition disabled:opacity-60"
+   381→   381→                >
+   382→   382→                  {authLoading ? (
+   383→   383→                    <Loader2 className="size-4 animate-spin" />
+   384→   384→                  ) : (
+   385→   385→                    <>
+   386→   386→                      {mode === "signup" ? "CREATE ACCOUNT" : "SIGN IN"}
+   387→   387→                      <ArrowRight className="size-4" />
+   388→   388→                    </>
+   389→   389→                  )}
+   390→   390→                </motion.button>
+   391→   391→              </form>
+   392→   392→
+   393→   393→              {/* Phone auth option */}
+   394→   394→              <motion.button
+   395→   395→                onClick={() => {
+   396→   396→                  setView("phone")
+   397→   397→                  setLocalError(null)
+   398→   398→                }}
+   399→   399→                whileTap={{ scale: 0.97 }}
+   400→   400→                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-info/40 bg-info/10 py-3 text-sm font-bold text-info transition"
+   401→   401→              >
+   402→   402→                <Phone className="size-4" />
+   403→   403→                Continue with Mobile Number
+   404→   404→              </motion.button>
+   405→   405→
+   406→   406→              {/* Feature highlights row */}
+   407→   407→              <div className="mt-5 grid grid-cols-3 gap-2">
+   408→   408→                <FeaturePill
+   409→   409→                  icon={<ShieldCheck className="size-3.5 text-bull" />}
+   410→   410→                  label="100% SECURE"
+   411→   411→                  tone="bull"
+   412→   412→                />
+   413→   413→                <FeaturePill
+   414→   414→                  icon={<Zap className="size-3.5 text-gold" />}
+   415→   415→                  label="INSTANT PAYOUT"
+   416→   416→                  tone="gold"
+   417→   417→                />
+   418→   418→                <FeaturePill
+   419→   419→                  icon={<Sparkles className="size-3.5 text-info" />}
+   420→   420→                  label="₹10K BONUS"
+   421→   421→                  tone="info"
+   422→   422→                />
+   423→   423→              </div>
+   424→   424→            </motion.div>
+   425→   425→          )}
+   426→   426→
+   427→   427→          {/* ═══════════════ PHONE VIEW ═══════════════ */}
+   428→   428→          {view === "phone" && (
+   429→   429→            <motion.div
+   430→   430→              key="phone"
+   431→   431→              initial={{ opacity: 0, x: 20 }}
+   432→   432→              animate={{ opacity: 1, x: 0 }}
+   433→   433→              exit={{ opacity: 0, x: -20 }}
+   434→   434→              transition={{ duration: 0.2 }}
+   435→   435→              className="space-y-4"
+   436→   436→            >
+   437→   437→              <button
+   438→   438→                onClick={() => setView("form")}
+   439→   439→                className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+   440→   440→              >
+   441→   441→                <ArrowLeft className="size-3.5" /> Back
+   442→   442→              </button>
+   443→   443→
+   444→   444→              <div className="text-center">
+   445→   445→                <motion.div
+   446→   446→                  initial={{ scale: 0, rotate: -20 }}
+   447→   447→                  animate={{ scale: 1, rotate: 0 }}
+   448→   448→                  transition={{ type: "spring", stiffness: 200, damping: 12 }}
+   449→   449→                  className="mx-auto mb-3 flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-info/30 to-info/10 border border-info/30 glow-info"
+   450→   450→                >
+   451→   451→                  <Phone className="size-7 text-info" />
+   452→   452→                </motion.div>
+   453→   453→                <h2 className="text-lg font-extrabold">Enter Mobile Number</h2>
+   454→   454→                <p className="mt-1 text-xs text-muted-foreground">
+   455→   455→                  We'll send you a 6-digit verification code via SMS
+   456→   456→                </p>
+   457→   457→              </div>
+   458→   458→
+   459→   459→              <div className="flex items-stretch gap-2">
+   460→   460→                <div className="flex items-center rounded-xl border border-border bg-card px-3.5 text-sm font-bold text-muted-foreground">
+   461→   461→                  🇮🇳 +91
+   462→   462→                </div>
+   463→   463→                <input
+   464→   464→                  type="tel"
+   465→   465→                  inputMode="numeric"
+   466→   466→                  placeholder="98765 43210"
+   467→   467→                  value={phone}
+   468→   468→                  onChange={(e) => setPhone(e.target.value.replace(/[^\d\s]/g, ""))}
+   469→   469→                  onKeyDown={(e) => {
+   470→   470→                    if (e.key === "Enter") handleSendOtp()
+   471→   471→                  }}
+   472→   472→                  className="flex-1 rounded-xl border border-border bg-card px-4 py-3.5 text-sm font-semibold tracking-wide outline-none focus:border-info transition-colors"
+   473→   473→                  maxLength={12}
+   474→   474→                />
+   475→   475→              </div>
+   476→   476→
+   477→   477→              <motion.button
+   478→   478→                onClick={handleSendOtp}
+   479→   479→                disabled={authLoading || phone.replace(/\D/g, "").length < 10}
+   480→   480→                whileTap={{ scale: 0.97 }}
+   481→   481→                className="flex w-full items-center justify-center gap-2 rounded-xl bg-bull py-3.5 text-sm font-bold text-black glow-green transition disabled:opacity-60"
+   482→   482→              >
+   483→   483→                {authLoading ? (
+   484→   484→                  <Loader2 className="size-4 animate-spin" />
+   485→   485→                ) : (
+   486→   486→                  <>
+   487→   487→                    SEND OTP
+   488→   488→                    <ArrowRight className="size-4" />
+   489→   489→                  </>
+   490→   490→                )}
+   491→   491→              </motion.button>
+   492→   492→
+   493→   493→              <p className="text-center text-[10px] text-muted-foreground">
+   494→   494→                By continuing you agree to our{" "}
+   495→   495→                <span className="font-semibold text-foreground">Terms</span> &{" "}
+   496→   496→                <span className="font-semibold text-foreground">Privacy Policy</span>
+   497→   497→              </p>
+   498→   498→            </motion.div>
+   499→   499→          )}
+   500→   500→
+   501→   501→          {/* ═══════════════ OTP VIEW ═══════════════ */}
+   502→   502→          {view === "otp" && (
+   503→   503→            <motion.div
+   504→   504→              key="otp"
+   505→   505→              initial={{ opacity: 0, x: 20 }}
+   506→   506→              animate={{ opacity: 1, x: 0 }}
+   507→   507→              exit={{ opacity: 0, x: -20 }}
+   508→   508→              transition={{ duration: 0.2 }}
+   509→   509→              className="space-y-4"
+   510→   510→            >
+   511→   511→              <button
+   512→   512→                onClick={() => {
+   513→   513→                  setView("phone")
+   514→   514→                  setOtp("")
+   515→   515→                  setDemoOtp(null)
+   516→   516→                }}
+   517→   517→                className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+   518→   518→              >
+   519→   519→                <ArrowLeft className="size-3.5" /> Change number
+   520→   520→              </button>
+   521→   521→
+   522→   522→              <div className="text-center">
+   523→   523→                <motion.div
+   524→   524→                  initial={{ scale: 0 }}
+   525→   525→                  animate={{ scale: 1 }}
+   526→   526→                  transition={{ type: "spring", stiffness: 200, damping: 12 }}
+   527→   527→                  className="mx-auto mb-3 flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-bull/30 to-bull/10 border border-bull/30 glow-green"
+   528→   528→                >
+   529→   529→                  <ShieldCheck className="size-7 text-bull" />
+   530→   530→                </motion.div>
+   531→   531→                <h2 className="text-lg font-extrabold">Verify OTP</h2>
+   532→   532→                <p className="mt-1 text-xs text-muted-foreground">
+   533→   533→                  Enter the 6-digit code sent to{" "}
+   534→   534→                  <span className="font-bold text-foreground">+91 {phone}</span>
+   535→   535→                </p>
+   536→   536→              </div>
+   537→   537→
+   538→   538→              {/* Demo OTP banner */}
+   539→   539→              {demoOtp && (
+   540→   540→                <motion.div
+   541→   541→                  initial={{ opacity: 0, scale: 0.95 }}
+   542→   542→                  animate={{ opacity: 1, scale: 1 }}
+   543→   543→                  className="rounded-lg border border-gold/40 bg-gold/10 px-3 py-2 text-center"
+   544→   544→                >
+   545→   545→                  <p className="text-[10px] font-semibold text-gold">DEMO OTP</p>
+   546→   546→                  <span className="font-mono text-2xl font-extrabold tracking-[0.4em] text-gold">
+   547→   547→                    {demoOtp}
+   548→   548→                  </span>
+   549→   549→                  <p className="mt-0.5 text-[9px] text-muted-foreground">
+   550→   550→                    (Production would send via SMS)
+   551→   551→                  </p>
+   552→   552→                </motion.div>
+   553→   553→              )}
+   554→   554→
+   555→   555→              <input
+   556→   556→                ref={otpInputRef}
+   557→   557→                type="text"
+   558→   558→                inputMode="numeric"
+   559→   559→                placeholder="• • • • • •"
+   560→   560→                value={otp}
+   561→   561→                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+   562→   562→                onKeyDown={(e) => {
+   563→   563→                  if (e.key === "Enter") handleVerifyOtp()
+   564→   564→                }}
+   565→   565→                className="w-full rounded-xl border border-border bg-card px-4 py-4 text-center text-2xl font-extrabold tracking-[0.5em] outline-none focus:border-bull transition-colors"
+   566→   566→                maxLength={6}
+   567→   567→              />
+   568→   568→
+   569→   569→              <motion.button
+   570→   570→                onClick={handleVerifyOtp}
+   571→   571→                disabled={authLoading || otp.length !== 6}
+   572→   572→                whileTap={{ scale: 0.97 }}
+   573→   573→                className="flex w-full items-center justify-center gap-2 rounded-xl bg-bull py-3.5 text-sm font-bold text-black glow-green transition disabled:opacity-60"
+   574→   574→              >
+   575→   575→                {authLoading ? (
+   576→   576→                  <Loader2 className="size-4 animate-spin" />
+   577→   577→                ) : (
+   578→   578→                  <>
+   579→   579→                    <CheckCircle2 className="size-4" /> VERIFY & CONTINUE
+   580→   580→                  </>
+   581→   581→                )}
+   582→   582→              </motion.button>
+   583→   583→
+   584→   584→              <div className="text-center text-xs text-muted-foreground">
+   585→   585→                Didn't receive code?{" "}
+   586→   586→                {resendCooldown > 0 ? (
+   587→   587→                  <span className="font-semibold">Resend in {resendCooldown}s</span>
+   588→   588→                ) : (
+   589→   589→                  <button
+   590→   590→                    onClick={handleResendOtp}
+   591→   591→                    className="font-bold text-bull hover:underline"
+   592→   592→                  >
+   593→   593→                    Resend OTP
+   594→   594→                  </button>
+   595→   595→                )}
+   596→   596→              </div>
+   597→   597→            </motion.div>
+   598→   598→          )}
+   599→   599→        </AnimatePresence>
+   600→   600→
+   601→   601→        {/* ────────────────────────────────────────────────────────── */}
+   602→   602→        {/* FOOTER — Welcome bonus + testimonials                     */}
+   603→   603→        {/* ────────────────────────────────────────────────────────── */}
+   604→   604→        <div className="mt-auto pt-6">
+   605→   605→          {view === "form" && (
+   606→   606→            <motion.div
+   607→   607→              initial={{ opacity: 0, y: 10 }}
+   608→   608→              animate={{ opacity: 1, y: 0 }}
+   609→   609→              transition={{ delay: 0.7 }}
+   610→   610→              className="rounded-2xl border border-gold/30 bg-gradient-to-br from-gold/10 via-gold/5 to-transparent p-3.5"
+   611→   611→            >
+   612→   612→              <div className="flex items-center gap-3">
+   613→   613→                <motion.div
+   614→   614→                  animate={{ rotate: [0, -10, 10, 0] }}
+   615→   615→                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+   616→   616→                  className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gold/20"
+   617→   617→                >
+   618→   618→                  <Wallet className="size-5 text-gold" />
+   619→   619→                </motion.div>
+   620→   620→                <div className="flex-1">
+   621→   621→                  <p className="text-xs font-bold text-gold">🎉 ₹10,000 WELCOME BONUS</p>
+   622→   622→                  <p className="text-[10px] text-muted-foreground">
+   623→   623→                    New users get instant bonus credited on signup
+   624→   624→                  </p>
+   625→   625→                </div>
+   626→   626→              </div>
+   627→   627→            </motion.div>
+   628→   628→          )}
+   629→   629→
+   630→   630→          {/* Mini stats */}
+   631→   631→          <div className="mt-3 flex items-center justify-around text-center">
+   632→   632→            <MiniStat icon={<Star className="size-3 text-gold" />} value="4.8★" label="RATED" />
+   633→   633→            <div className="h-8 w-px bg-border" />
+   634→   634→            <MiniStat icon={<Flame className="size-3 text-bull" />} value="12L+" label="TRADES" />
+   635→   635→            <div className="h-8 w-px bg-border" />
+   636→   636→            <MiniStat icon={<Trophy className="size-3 text-gold" />} value="₹11CR" label="PAID OUT" />
+   637→   637→          </div>
+   638→   638→        </div>
+   639→   639→      </div>
+   640→   640→    </div>
+   641→   641→  )
+   642→   642→}
+   643→   643→
+   644→   644→function InputField({
+   645→   645→  icon,
+   646→   646→  type,
+   647→   647→  placeholder,
+   648→   648→  value,
+   649→   649→  onChange,
+   650→   650→  autoComplete,
+   651→   651→  trailingIcon,
+   652→   652→}: {
+   653→   653→  icon: React.ReactNode
+   654→   654→  type: string
+   655→   655→  placeholder: string
+   656→   656→  value: string
+   657→   657→  onChange: (v: string) => void
+   658→   658→  autoComplete?: string
+   659→   659→  trailingIcon?: React.ReactNode
+   660→   660→}) {
+   661→   661→  return (
+   662→   662→    <div className="relative flex items-center">
+   663→   663→      <span className="absolute left-3.5">{icon}</span>
+   664→   664→      <input
+   665→   665→        type={type}
+   666→   666→        placeholder={placeholder}
+   667→   667→        value={value}
+   668→   668→        onChange={(e) => onChange(e.target.value)}
+   669→   669→        autoComplete={autoComplete}
+   670→   670→        className="w-full rounded-xl border border-border bg-card py-3.5 pl-10 pr-10 text-sm font-semibold outline-none focus:border-bull transition-colors"
+   671→   671→      />
+   672→   672→      {trailingIcon && <span className="absolute right-3.5">{trailingIcon}</span>}
+   673→   673→    </div>
+   674→   674→  )
+   675→   675→}
+   676→   676→
+   677→   677→function FeaturePill({
+   678→   678→  icon,
+   679→   679→  label,
+   680→   680→  tone,
+   681→   681→}: {
+   682→   682→  icon: React.ReactNode
+   683→   683→  label: string
+   684→   684→  tone: "bull" | "gold" | "info"
+   685→   685→}) {
+   686→   686→  const color =
+   687→   687→    tone === "bull"
+   688→   688→      ? "border-bull/30 bg-bull/5 text-bull"
+   689→   689→      : tone === "gold"
+   690→   690→        ? "border-gold/30 bg-gold/5 text-gold"
+   691→   691→        : "border-info/30 bg-info/5 text-info"
+   692→   692→  return (
+   693→   693→    <div className={`flex flex-col items-center gap-1 rounded-xl border ${color} px-2 py-2.5`}>
+   694→   694→      {icon}
+   695→   695→      <span className="text-[9px] font-bold tracking-wider text-center">{label}</span>
+   696→   696→    </div>
+   697→   697→  )
+   698→   698→}
+   699→   699→
+   700→   700→function MiniStat({
+   701→   701→  icon,
+   702→   702→  value,
+   703→   703→  label,
+   704→   704→}: {
+   705→   705→  icon: React.ReactNode
+   706→   706→  value: string
+   707→   707→  label: string
+   708→   708→}) {
+   709→   709→  return (
+   710→   710→    <div className="flex flex-col items-center">
+   711→   711→      <div className="flex items-center gap-1">
+   712→   712→        {icon}
+   713→   713→        <span className="text-xs font-extrabold">{value}</span>
+   714→   714→      </div>
+   715→   715→      <span className="text-[9px] font-semibold text-muted-foreground">{label}</span>
+   716→   716→    </div>
+   717→   717→  )
+   718→   718→}
+   719→   719→
+   720→   720→function GoogleIcon({ className }: { className?: string }) {
+   721→   721→  return (
+   722→   722→    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+   723→   723→      <path
+   724→   724→        fill="#4285F4"
+   725→   725→        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+   726→   726→      />
+   727→   727→      <path
+   728→   728→        fill="#34A853"
+   729→   729→        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+   730→   730→      />
+   731→   731→      <path
+   732→   732→        fill="#FBBC05"
+   733→   733→        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+   734→   734→      />
+   735→   735→      <path
+   736→   736→        fill="#EA4335"
+   737→   737→        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+   738→   738→      />
+   739→   739→    </svg>
+   740→   740→  )
+   741→   741→}
+   742→   742→

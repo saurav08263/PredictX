@@ -1,0 +1,60 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@theme {
+  --font-sans: var(--font-geist-sans), 'Geist Fallback';
+  --font-mono: var(--font-geist-mono), 'Geist Mono Fallback';
+
+  --color-background: #05080c;
+  --color-foreground: #e8f0f0;
+  --color-card: #0b1117;
+  --color-card-foreground: #e8f0f0;
+  --color-panel: #090e14;
+  --color-muted: #131b22;
+  --color-muted-foreground: #7d8a96;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-bull: #2fe07a;
+  --color-bear: #f23f4b;
+  --color-gold: #f5c518;
+  --color-info: #2f8bff;
+  --color-primary: #2fe07a;
+  --color-primary-foreground: #03110a;
+
+  --radius: 0.75rem;
+}
+
+html,
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+/* Respect native device safe areas (notch / home indicator) on iOS & Android */
+header {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+nav {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+/* Glow utilities */
+.glow-green {
+  box-shadow: 0 0 18px rgba(47, 224, 122, 0.55), 0 0 4px rgba(47, 224, 122, 0.6);
+}
+.glow-red {
+  box-shadow: 0 0 18px rgba(242, 63, 75, 0.5), 0 0 4px rgba(242, 63, 75, 0.6);
+}
+.glow-gold {
+  box-shadow: 0 0 22px rgba(245, 197, 24, 0.55), 0 0 6px rgba(245, 197, 24, 0.6);
+}
+.text-glow-green {
+  text-shadow: 0 0 12px rgba(47, 224, 122, 0.7);
+}
+.text-glow-gold {
+  text-shadow: 0 0 12px rgba(245, 197, 24, 0.7);
+}

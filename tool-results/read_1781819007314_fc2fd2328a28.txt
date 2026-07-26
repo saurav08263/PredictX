@@ -1,0 +1,709 @@
+     1→"use client"
+     2→
+     3→import Image from "next/image"
+     4→import { useState } from "react"
+     5→import { motion, AnimatePresence } from "framer-motion"
+     6→import {
+     7→  ChevronRight,
+     8→  Trophy,
+     9→  Gift,
+    10→  Bell,
+    11→  Shield,
+    12→  HelpCircle,
+    13→  LogOut,
+    14→  Flame,
+    15→  Target,
+    16→  TrendingUp,
+    17→  Zap,
+    18→  Check,
+    19→  Loader2,
+    20→  X,
+    21→  Copy,
+    22→  Star,
+    23→  Medal,
+    24→  Award,
+    25→  Lock,
+    26→  MessageSquare,
+    27→  Mail,
+    28→  Phone,
+    29→  Globe,
+    30→  BellRing,
+    31→} from "lucide-react"
+    32→import { useCrypto } from "../store"
+    33→
+    34→type MenuModal = "achievements" | "refer" | "notifications" | "security" | "help" | "logout" | null
+    35→
+    36→const menu = [
+    37→  { id: "achievements" as const, icon: Trophy, label: "My Achievements" },
+    38→  { id: "refer" as const, icon: Gift, label: "Refer & Earn" },
+    39→  { id: "notifications" as const, icon: Bell, label: "Notifications" },
+    40→  { id: "security" as const, icon: Shield, label: "Security & KYC" },
+    41→  { id: "help" as const, icon: HelpCircle, label: "Help & Support" },
+    42→]
+    43→
+    44→export function ProfileScreen() {
+    45→  const {
+    46→    wins,
+    47→    totalBets,
+    48→    winRate,
+    49→    fmt,
+    50→    profit,
+    51→    winnings,
+    52→    balance,
+    53→    userName,
+    54→    userId,
+    55→    logout,
+    56→    authMethod,
+    57→    email,
+    58→    phone,
+    59→  } = useCrypto()
+    60→  const [activeModal, setActiveModal] = useState<MenuModal>(null)
+    61→  const [logoutLoading, setLogoutLoading] = useState(false)
+    62→
+    63→  const handleLogout = async () => {
+    64→    setLogoutLoading(true)
+    65→    await logout()
+    66→    setLogoutLoading(false)
+    67→  }
+    68→
+    69→  return (
+    70→    <motion.div
+    71→      className="flex flex-col gap-4 px-4 pb-4 pt-3"
+    72→      initial={{ opacity: 0 }}
+    73→      animate={{ opacity: 1 }}
+    74→      transition={{ duration: 0.3 }}
+    75→    >
+    76→      {/* Profile header */}
+    77→      <div className="flex flex-col items-center rounded-2xl border border-gold/30 bg-card p-5 text-center">
+    78→        <motion.span
+    79→          className="relative overflow-hidden rounded-full border-2 border-gold glow-gold"
+    80→          initial={{ scale: 0.8, opacity: 0 }}
+    81→          animate={{ scale: 1, opacity: 1 }}
+    82→          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+    83→        >
+    84→          <Image src="/images/winner-1.png" alt="Your avatar" width={80} height={80} className="size-20 object-cover" />
+    85→        </motion.span>
+    86→        <motion.h2
+    87→          className="mt-3 flex items-center gap-1.5 text-lg font-extrabold"
+    88→          initial={{ y: 10, opacity: 0 }}
+    89→          animate={{ y: 0, opacity: 1 }}
+    90→          transition={{ delay: 0.1 }}
+    91→        >
+    92→          {userName}
+    93→        </motion.h2>
+    94→        <motion.p
+    95→          className="text-xs text-muted-foreground"
+    96→          initial={{ opacity: 0 }}
+    97→          animate={{ opacity: 1 }}
+    98→          transition={{ delay: 0.2 }}
+    99→        >
+   100→          ID: {userId?.slice(0, 8)}...
+   101→        </motion.p>
+   102→
+   103→        {/* Trader badge */}
+   104→        <motion.div
+   105→          initial={{ opacity: 0, y: 10 }}
+   106→          animate={{ opacity: 1, y: 0 }}
+   107→          transition={{ delay: 0.25 }}
+   108→          className="mt-2 flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-muted-foreground"
+   109→        >
+   110→          <Target className="size-3" />
+   111→          <span className="text-[10px] font-bold">TRADER</span>
+   112→        </motion.div>
+   113→
+   114→        {/* Stats grid */}
+   115→        <motion.div
+   116→          className="mt-4 grid w-full grid-cols-3 gap-2 border-t border-border pt-4"
+   117→          initial={{ y: 10, opacity: 0 }}
+   118→          animate={{ y: 0, opacity: 1 }}
+   119→          transition={{ delay: 0.3 }}
+   120→        >
+   121→          <div>
+   122→            <p className="text-lg font-bold text-bull">{wins}</p>
+   123→            <p className="text-[10px] text-muted-foreground">WINS</p>
+   124→          </div>
+   125→          <div>
+   126→            <p className="text-lg font-bold">{totalBets}</p>
+   127→            <p className="text-[10px] text-muted-foreground">TOTAL BETS</p>
+   128→          </div>
+   129→          <div>
+   130→            <p className="text-lg font-bold text-gold">{winRate}%</p>
+   131→            <p className="text-[10px] text-muted-foreground">WIN RATE</p>
+   132→          </div>
+   133→        </motion.div>
+   134→
+   135→        {/* Profit card */}
+   136→        <motion.div
+   137→          className="mt-3 grid w-full grid-cols-2 gap-2"
+   138→          initial={{ y: 10, opacity: 0 }}
+   139→          animate={{ y: 0, opacity: 1 }}
+   140→          transition={{ delay: 0.4 }}
+   141→        >
+   142→          <div className="flex items-center gap-2 rounded-lg border border-bull/20 bg-bull/5 px-3 py-2">
+   143→            <TrendingUp className="size-4 text-bull" />
+   144→            <div className="text-left">
+   145→              <p className="text-sm font-bold text-bull">{fmt(profit)}</p>
+   146→              <p className="text-[9px] text-muted-foreground">PROFIT</p>
+   147→            </div>
+   148→          </div>
+   149→          <div className="flex items-center gap-2 rounded-lg border border-gold/20 bg-gold/5 px-3 py-2">
+   150→            <Target className="size-4 text-gold" />
+   151→            <div className="text-left">
+   152→              <p className="text-sm font-bold">{fmt(winnings)}</p>
+   153→              <p className="text-[9px] text-muted-foreground">WINNINGS</p>
+   154→            </div>
+   155→          </div>
+   156→        </motion.div>
+   157→      </div>
+   158→
+   159→      {/* Performance card */}
+   160→      <motion.div
+   161→        className="rounded-2xl border border-border bg-card p-4"
+   162→        initial={{ y: 10, opacity: 0 }}
+   163→        animate={{ y: 0, opacity: 1 }}
+   164→        transition={{ delay: 0.5 }}
+   165→      >
+   166→        <div className="mb-3 flex items-center gap-2">
+   167→          <Target className="size-5 text-bull" />
+   168→          <h2 className="font-bold tracking-wide">PERFORMANCE</h2>
+   169→        </div>
+   170→        <div className="grid grid-cols-2 gap-3">
+   171→          <div className="rounded-xl border border-border bg-panel p-3 text-center">
+   172→            <p className="text-lg font-bold text-bull">{fmt(winnings)}</p>
+   173→            <p className="text-[10px] text-muted-foreground">TOTAL WINNINGS</p>
+   174→          </div>
+   175→          <div className="rounded-xl border border-border bg-panel p-3 text-center">
+   176→            <p className="text-lg font-bold">{fmt(balance, 2)}</p>
+   177→            <p className="text-[10px] text-muted-foreground">CURRENT BALANCE</p>
+   178→          </div>
+   179→        </div>
+   180→        {/* Win rate bar */}
+   181→        <div className="mt-3">
+   182→          <div className="mb-1 flex items-center justify-between text-[10px]">
+   183→            <span className="font-semibold text-muted-foreground">WIN RATE</span>
+   184→            <span className="font-bold text-bull">{winRate}%</span>
+   185→          </div>
+   186→          <div className="h-2 overflow-hidden rounded-full bg-muted">
+   187→            <motion.div
+   188→              className="h-full rounded-full bg-bull"
+   189→              initial={{ width: 0 }}
+   190→              animate={{ width: `${winRate}%` }}
+   191→              transition={{ duration: 1, delay: 0.6, ease: "easeOut" }}
+   192→            />
+   193→          </div>
+   194→        </div>
+   195→      </motion.div>
+   196→
+   197→      {/* Menu */}
+   198→      <motion.div
+   199→        className="overflow-hidden rounded-2xl border border-border bg-card"
+   200→        initial={{ y: 10, opacity: 0 }}
+   201→        animate={{ y: 0, opacity: 1 }}
+   202→        transition={{ delay: 0.6 }}
+   203→      >
+   204→        {menu.map((m, i) => (
+   205→          <button
+   206→            key={m.label}
+   207→            onClick={() => setActiveModal(m.id)}
+   208→            className={`flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm font-semibold transition active:bg-muted/50 ${
+   209→              i !== menu.length - 1 ? "border-b border-border/60" : ""
+   210→            }`}
+   211→          >
+   212→            <m.icon className="size-5 text-muted-foreground" />
+   213→            <span className="flex-1">{m.label}</span>
+   214→            <ChevronRight className="size-4 text-muted-foreground" />
+   215→          </button>
+   216→        ))}
+   217→      </motion.div>
+   218→
+   219→      <motion.button
+   220→        onClick={handleLogout}
+   221→        disabled={logoutLoading}
+   222→        className="flex items-center justify-center gap-2 rounded-2xl border border-bear/40 bg-bear/10 py-3.5 text-sm font-bold text-bear disabled:opacity-60"
+   223→        whileTap={{ scale: 0.97 }}
+   224→        initial={{ opacity: 0 }}
+   225→        animate={{ opacity: 1 }}
+   226→        transition={{ delay: 0.7 }}
+   227→      >
+   228→        {logoutLoading ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
+   229→        LOG OUT
+   230→      </motion.button>
+   231→
+   232→      {/* Menu modals */}
+   233→      <AnimatePresence>
+   234→        {activeModal && (
+   235→          <MenuModalWrapper
+   236→            onClose={() => setActiveModal(null)}
+   237→            modal={activeModal}
+   238→            userName={userName}
+   239→            userId={userId}
+   240→            wins={wins}
+   241→            totalBets={totalBets}
+   242→            winRate={winRate}
+   243→            authMethod={authMethod}
+   244→            email={email}
+   245→            phone={phone}
+   246→          />
+   247→        )}
+   248→      </AnimatePresence>
+   249→    </motion.div>
+   250→  )
+   251→}
+   252→
+   253→function MenuModalWrapper({
+   254→  onClose,
+   255→  modal,
+   256→  userName,
+   257→  userId,
+   258→  wins,
+   259→  totalBets,
+   260→  winRate,
+   261→  authMethod,
+   262→  email,
+   263→  phone,
+   264→}: {
+   265→  onClose: () => void
+   266→  modal: Exclude<MenuModal, null>
+   267→  userName: string
+   268→  userId: string | null
+   269→  wins: number
+   270→  totalBets: number
+   271→  winRate: number
+   272→  authMethod: string | null
+   273→  email: string | null
+   274→  phone: string | null
+   275→}) {
+   276→  return (
+   277→    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 sm:items-center" onClick={onClose}>
+   278→      <motion.div
+   279→        className="mx-auto w-full max-w-md rounded-t-2xl border border-border bg-panel p-5 pb-8 sm:rounded-2xl"
+   280→        onClick={(e) => e.stopPropagation()}
+   281→        initial={{ y: "100%", opacity: 0 }}
+   282→        animate={{ y: 0, opacity: 1 }}
+   283→        exit={{ y: "100%", opacity: 0 }}
+   284→        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+   285→      >
+   286→        <div className="mb-4 flex items-center justify-between">
+   287→          <ModalTitle modal={modal} />
+   288→          <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">
+   289→            <X className="size-5" />
+   290→          </button>
+   291→        </div>
+   292→        <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
+   293→          {modal === "achievements" && <AchievementsContent wins={wins} totalBets={totalBets} winRate={winRate} />}
+   294→          {modal === "refer" && <ReferContent userName={userName} userId={userId} />}
+   295→          {modal === "notifications" && <NotificationsContent />}
+   296→          {modal === "security" && <SecurityContent authMethod={authMethod} email={email} phone={phone} />}
+   297→          {modal === "help" && <HelpContent />}
+   298→        </div>
+   299→      </motion.div>
+   300→    </div>
+   301→  )
+   302→}
+   303→
+   304→function ModalTitle({ modal }: { modal: Exclude<MenuModal, null> }) {
+   305→  const map = {
+   306→    achievements: { icon: Trophy, label: "Achievements" },
+   307→    refer: { icon: Gift, label: "Refer & Earn" },
+   308→    notifications: { icon: Bell, label: "Notifications" },
+   309→    security: { icon: Shield, label: "Security & KYC" },
+   310→    help: { icon: HelpCircle, label: "Help & Support" },
+   311→    logout: { icon: LogOut, label: "Log Out" },
+   312→  } as const
+   313→  const { icon: Icon, label } = map[modal]
+   314→  return (
+   315→    <div className="flex items-center gap-2">
+   316→      <Icon className="size-5 text-bull" />
+   317→      <h3 className="font-bold tracking-wide">{label.toUpperCase()}</h3>
+   318→    </div>
+   319→  )
+   320→}
+   321→
+   322→function AchievementsContent({ wins, totalBets, winRate }: { wins: number; totalBets: number; winRate: number }) {
+   323→  const achievements = [
+   324→    { icon: Medal, label: "First Win", desc: "Win your first prediction", unlocked: wins >= 1, color: "text-bull" },
+   325→    { icon: Flame, label: "Hot Streak", desc: "Win 5 predictions", unlocked: wins >= 5, color: "text-gold" },
+   326→    { icon: Trophy, label: "Champion", desc: "Win 25 predictions", unlocked: wins >= 25, color: "text-gold" },
+   327→    { icon: Star, label: "Rising Star", desc: "Place 10 bets", unlocked: totalBets >= 10, color: "text-info" },
+   328→    { icon: Award, label: "Veteran", desc: "Place 100 bets", unlocked: totalBets >= 100, color: "text-bull" },
+   329→    { icon: Target, label: "Sharp Shooter", desc: "Reach 60% win rate", unlocked: winRate >= 60, color: "text-bull" },
+   330→    { icon: Zap, label: "High Roller", desc: "Place 500 bets", unlocked: totalBets >= 500, color: "text-gold" },
+   331→  ]
+   332→  return (
+   333→    <div className="grid grid-cols-2 gap-3">
+   334→      {achievements.map((a) => (
+   335→        <div
+   336→          key={a.label}
+   337→          className={`rounded-xl border p-3 text-center transition ${
+   338→            a.unlocked ? "border-bull/30 bg-bull/5" : "border-border bg-muted/30 opacity-60"
+   339→          }`}
+   340→        >
+   341→          <a.icon className={`mx-auto size-7 ${a.unlocked ? a.color : "text-muted-foreground"}`} />
+   342→          <p className="mt-1.5 text-xs font-bold">{a.label}</p>
+   343→          <p className="mt-0.5 text-[10px] text-muted-foreground">{a.desc}</p>
+   344→          {a.unlocked && (
+   345→            <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-bull/20 px-2 py-0.5 text-[9px] font-bold text-bull">
+   346→              <Check className="size-2.5" /> UNLOCKED
+   347→            </span>
+   348→          )}
+   349→        </div>
+   350→      ))}
+   351→    </div>
+   352→  )
+   353→}
+   354→
+   355→function ReferContent({ userName, userId }: { userName: string; userId: string | null }) {
+   356→  const referralCode = userId ? `CP${userId.slice(0, 6).toUpperCase()}` : "CPDEMO01"
+   357→  const referralLink = `https://cryptopredictor.app/r/${referralCode}`
+   358→  const [copied, setCopied] = useState(false)
+   359→  const [shareStatus, setShareStatus] = useState<string | null>(null)
+   360→
+   361→  const handleCopy = () => {
+   362→    navigator.clipboard?.writeText(referralLink).catch(() => {})
+   363→    setCopied(true)
+   364→    setTimeout(() => setCopied(false), 2000)
+   365→  }
+   366→
+   367→  const handleShare = (platform: "whatsapp" | "telegram" | "more") => {
+   368→    const text = `🚀 Join me on PredicTX and get ₹10,000 welcome bonus! Use my referral code ${referralCode}. ${referralLink}`
+   369→    try {
+   370→      if (platform === "whatsapp") {
+   371→        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
+   372→      } else if (platform === "telegram") {
+   373→        window.open(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(text)}`, "_blank")
+   374→      } else {
+   375→        // Use native share sheet if available, otherwise copy
+   376→        if (navigator.share) {
+   377→          navigator.share({ title: "PredicTX", text, url: referralLink }).catch(() => {})
+   378→        } else {
+   379→          navigator.clipboard?.writeText(text).catch(() => {})
+   380→          setShareStatus("Link copied to clipboard")
+   381→          setTimeout(() => setShareStatus(null), 2000)
+   382→        }
+   383→      }
+   384→    } catch {
+   385→      setShareStatus("Unable to share — link copied instead")
+   386→      navigator.clipboard?.writeText(referralLink).catch(() => {})
+   387→      setTimeout(() => setShareStatus(null), 2000)
+   388→    }
+   389→  }
+   390→
+   391→  return (
+   392→    <div className="space-y-4">
+   393→      <div className="rounded-xl border border-gold/30 bg-gradient-to-br from-gold/10 to-transparent p-4 text-center">
+   394→        <Gift className="mx-auto size-10 text-gold" />
+   395→        <h4 className="mt-2 text-base font-extrabold text-gold">Earn ₹2,000 per friend!</h4>
+   396→        <p className="mt-1 text-xs text-muted-foreground">
+   397→          Get ₹2,000 when your friend makes their first deposit. They get ₹1,000 too!
+   398→        </p>
+   399→      </div>
+   400→      <div>
+   401→        <p className="mb-1 text-[10px] font-bold tracking-wide text-muted-foreground">YOUR REFERRAL CODE</p>
+   402→        <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
+   403→          <span className="flex-1 font-mono text-sm font-bold tracking-wider text-bull">{referralCode}</span>
+   404→          <button
+   405→            onClick={handleCopy}
+   406→            className="rounded-md bg-bull/20 px-2.5 py-1.5 text-[10px] font-bold text-bull active:scale-95 transition"
+   407→            aria-label="Copy referral code"
+   408→          >
+   409→            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+   410→          </button>
+   411→        </div>
+   412→      </div>
+   413→      <div>
+   414→        <p className="mb-1 text-[10px] font-bold tracking-wide text-muted-foreground">SHARE LINK</p>
+   415→        <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
+   416→          <span className="flex-1 truncate text-xs text-muted-foreground">{referralLink}</span>
+   417→          <button
+   418→            onClick={handleCopy}
+   419→            className="rounded-md bg-info/20 px-2.5 py-1.5 text-[10px] font-bold text-info active:scale-95 transition"
+   420→          >
+   421→            {copied ? "COPIED" : "COPY"}
+   422→          </button>
+   423→        </div>
+   424→      </div>
+   425→      {shareStatus && (
+   426→        <p className="text-center text-[10px] font-semibold text-bull">{shareStatus}</p>
+   427→      )}
+   428→      <div className="grid grid-cols-3 gap-2">
+   429→        <ShareBtn label="WhatsApp" emoji="💬" onClick={() => handleShare("whatsapp")} />
+   430→        <ShareBtn label="Telegram" emoji="✈️" onClick={() => handleShare("telegram")} />
+   431→        <ShareBtn label="More" emoji="⋯" onClick={() => handleShare("more")} />
+   432→      </div>
+   433→      <div className="rounded-xl border border-border bg-card p-3 text-center">
+   434→        <p className="text-[10px] text-muted-foreground">FRIENDS JOINED</p>
+   435→        <p className="text-2xl font-extrabold text-bull">0</p>
+   436→        <p className="text-[10px] text-muted-foreground">Total earned: ₹0</p>
+   437→      </div>
+   438→    </div>
+   439→  )
+   440→}
+   441→
+   442→function ShareBtn({ label, emoji, onClick }: { label: string; emoji: string; onClick: () => void }) {
+   443→  return (
+   444→    <button
+   445→      onClick={onClick}
+   446→      className="flex flex-col items-center gap-1 rounded-xl border border-border bg-card py-2.5 text-[10px] font-bold transition active:scale-95 hover:border-bull/40 hover:bg-bull/5"
+   447→    >
+   448→      <span className="text-lg">{emoji}</span>
+   449→      {label}
+   450→    </button>
+   451→  )
+   452→}
+   453→
+   454→function NotificationsContent() {
+   455→  const [settings, setSettings] = useState({
+   456→    wins: true,
+   457→    losses: false,
+   458→    deposits: true,
+   459→    withdrawals: true,
+   460→    promotions: true,
+   461→    news: false,
+   462→    priceAlerts: true,
+   463→  })
+   464→  const toggle = (key: keyof typeof settings) =>
+   465→    setSettings((s) => ({ ...s, [key]: !s[key] }))
+   466→  const items = [
+   467→    { key: "wins" as const, icon: Trophy, label: "Win notifications", desc: "Get notified when you win" },
+   468→    { key: "losses" as const, icon: Target, label: "Loss notifications", desc: "Get notified when you lose" },
+   469→    { key: "deposits" as const, icon: TrendingUp, label: "Deposit confirmations", desc: "When deposits are credited" },
+   470→    { key: "withdrawals" as const, icon: Zap, label: "Withdrawal updates", desc: "When withdrawals are processed" },
+   471→    { key: "promotions" as const, icon: Gift, label: "Promotions & offers", desc: "Special bonus offers" },
+   472→    { key: "news" as const, icon: Globe, label: "Crypto news", desc: "Breaking market news" },
+   473→    { key: "priceAlerts" as const, icon: BellRing, label: "Price alerts", desc: "BTC, ETH, SOL price moves" },
+   474→  ]
+   475→  return (
+   476→    <div className="space-y-2">
+   477→      {items.map((item) => (
+   478→        <div key={item.key} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+   479→          <item.icon className="size-5 text-muted-foreground" />
+   480→          <div className="flex-1">
+   481→            <p className="text-sm font-bold">{item.label}</p>
+   482→            <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+   483→          </div>
+   484→          <button
+   485→            onClick={() => toggle(item.key)}
+   486→            className={`relative h-6 w-11 rounded-full transition ${
+   487→              settings[item.key] ? "bg-bull" : "bg-muted"
+   488→            }`}
+   489→            aria-label={`Toggle ${item.label}`}
+   490→          >
+   491→            <motion.span
+   492→              layout
+   493→              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+   494→              className={`absolute top-0.5 size-5 rounded-full bg-white shadow ${
+   495→                settings[item.key] ? "right-0.5" : "left-0.5"
+   496→              }`}
+   497→            />
+   498→          </button>
+   499→        </div>
+   500→      ))}
+   501→    </div>
+   502→  )
+   503→}
+   504→
+   505→function SecurityContent({
+   506→  authMethod,
+   507→  email,
+   508→  phone,
+   509→}: {
+   510→  authMethod: string | null
+   511→  email: string | null
+   512→  phone: string | null
+   513→}) {
+   514→  const authLabel =
+   515→    authMethod === "google" ? "Google Account" :
+   516→    authMethod === "phone" ? "Phone Number" :
+   517→    authMethod === "email" ? "Email & Password" :
+   518→    "Guest"
+   519→  const [notice, setNotice] = useState<string | null>(null)
+   520→  const [twoFAEnabled, setTwoFAEnabled] = useState(false)
+   521→
+   522→  const flashNotice = (msg: string) => {
+   523→    setNotice(msg)
+   524→    setTimeout(() => setNotice(null), 2500)
+   525→  }
+   526→
+   527→  const handleChangePassword = () => {
+   528→    if (authMethod === "google" || authMethod === "phone") {
+   529→      flashNotice(`Password not used — you sign in via ${authLabel}.`)
+   530→    } else if (email) {
+   531→      flashNotice(`Password reset link sent to ${email}`)
+   532→    } else {
+   533→      flashNotice("Add an email to your account first to change password.")
+   534→    }
+   535→  }
+   536→
+   537→  const handleToggle2FA = () => {
+   538→    if (twoFAEnabled) {
+   539→      setTwoFAEnabled(false)
+   540→      flashNotice("Two-Factor Authentication disabled.")
+   541→    } else {
+   542→      setTwoFAEnabled(true)
+   543→      flashNotice("Two-Factor Authentication enabled — extra security active!")
+   544→    }
+   545→  }
+   546→
+   547→  return (
+   548→    <div className="space-y-3">
+   549→      <div className="rounded-xl border border-bull/30 bg-bull/5 p-3">
+   550→        <div className="flex items-center gap-2">
+   551→          <Shield className="size-5 text-bull" />
+   552→          <p className="text-sm font-bold text-bull">Account Verified</p>
+   553→        </div>
+   554→        <p className="mt-1 text-[10px] text-muted-foreground">
+   555→          Your account is verified via {authLabel}.
+   556→        </p>
+   557→      </div>
+   558→
+   559→      <div className="rounded-xl border border-border bg-card p-3">
+   560→        <p className="mb-2 text-[10px] font-bold tracking-wide text-muted-foreground">ACCOUNT DETAILS</p>
+   561→        <DetailRow icon={<Mail className="size-4 text-muted-foreground" />} label="Email" value={email || "Not set"} />
+   562→        <DetailRow icon={<Phone className="size-4 text-muted-foreground" />} label="Phone" value={phone || "Not set"} />
+   563→        <DetailRow icon={<Lock className="size-4 text-muted-foreground" />} label="Sign-in method" value={authLabel} />
+   564→      </div>
+   565→
+   566→      <div className="rounded-xl border border-gold/30 bg-gold/5 p-3">
+   567→        <div className="flex items-center gap-2">
+   568→          <Lock className="size-5 text-gold" />
+   569→          <p className="text-sm font-bold text-gold">KYC Status: Verified</p>
+   570→        </div>
+   571→        <p className="mt-1 text-[10px] text-muted-foreground">
+   572→          Your identity has been verified. Withdrawal limit: ₹50,000/day.
+   573→        </p>
+   574→      </div>
+   575→
+   576→      {notice && (
+   577→        <motion.div
+   578→          initial={{ opacity: 0, y: -5 }}
+   579→          animate={{ opacity: 1, y: 0 }}
+   580→          exit={{ opacity: 0 }}
+   581→          className="rounded-lg border border-info/40 bg-info/10 px-3 py-2 text-[11px] font-semibold text-info"
+   582→        >
+   583→          {notice}
+   584→        </motion.div>
+   585→      )}
+   586→
+   587→      <motion.button
+   588→        onClick={handleChangePassword}
+   589→        whileTap={{ scale: 0.97 }}
+   590→        className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card py-3 text-xs font-bold text-muted-foreground hover:border-bull/40 hover:text-bull transition"
+   591→      >
+   592→        <Shield className="size-4" /> Change Password
+   593→      </motion.button>
+   594→      <motion.button
+   595→        onClick={handleToggle2FA}
+   596→        whileTap={{ scale: 0.97 }}
+   597→        className={`flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-xs font-bold transition ${
+   598→          twoFAEnabled
+   599→            ? "border-bull/40 bg-bull/10 text-bull"
+   600→            : "border-border bg-card text-muted-foreground hover:border-gold/40 hover:text-gold"
+   601→        }`}
+   602→      >
+   603→        <Lock className="size-4" />
+   604→        {twoFAEnabled ? "Two-Factor Authentication: ON" : "Enable Two-Factor Authentication"}
+   605→      </motion.button>
+   606→    </div>
+   607→  )
+   608→}
+   609→
+   610→function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+   611→  return (
+   612→    <div className="flex items-center gap-2 border-b border-border/40 py-2 last:border-0">
+   613→      {icon}
+   614→      <span className="flex-1 text-xs text-muted-foreground">{label}</span>
+   615→      <span className="text-xs font-semibold">{value}</span>
+   616→    </div>
+   617→  )
+   618→}
+   619→
+   620→function HelpContent() {
+   621→  const faqs = [
+   622→    { q: "How do I place a prediction?", a: "Go to the Predict tab, select time & amount, then tap UP or DOWN. Max 3 taps to place a bet!" },
+   623→    { q: "How are winners decided?", a: "If you predict UP and the price goes up by the end of the round, you win 1.8x your stake." },
+   624→    { q: "How do I withdraw my winnings?", a: "Go to the Wallet tab, tap Withdraw, enter the amount, and choose your payment method. Withdrawals are instant." },
+   625→    { q: "Is there a prediction limit?", a: "No — you can make unlimited predictions. Just make sure you have enough balance for each bet." },
+   626→    { q: "Is my money safe?", a: "Yes — all funds are held securely and transactions are encrypted. We use bank-grade security." },
+   627→  ]
+   628→  const [open, setOpen] = useState<number | null>(0)
+   629→  const [notice, setNotice] = useState<string | null>(null)
+   630→
+   631→  const flashNotice = (msg: string) => {
+   632→    setNotice(msg)
+   633→    setTimeout(() => setNotice(null), 2500)
+   634→  }
+   635→
+   636→  const handleContact = (type: "chat" | "email" | "call") => {
+   637→    if (type === "chat") {
+   638→      flashNotice("Live chat opening — agent will join in under 5 min.")
+   639→    } else if (type === "email") {
+   640→      window.location.href = "mailto:support@cryptopredictor.app?subject=Help%20Request"
+   641→      flashNotice("Opening your email app...")
+   642→    } else {
+   643→      flashNotice("Calling support: +91 1800-123-4567")
+   644→    }
+   645→  }
+   646→
+   647→  return (
+   648→    <div className="space-y-3">
+   649→      <div className="rounded-xl border border-info/30 bg-info/5 p-3">
+   650→        <p className="text-xs font-bold text-info">Need help? We're here 24/7</p>
+   651→        <p className="mt-0.5 text-[10px] text-muted-foreground">Average response time: under 5 minutes</p>
+   652→      </div>
+   653→      <div className="grid grid-cols-3 gap-2">
+   654→        <ContactBtn icon={<MessageSquare className="size-5" />} label="Live Chat" onClick={() => handleContact("chat")} />
+   655→        <ContactBtn icon={<Mail className="size-5" />} label="Email" onClick={() => handleContact("email")} />
+   656→        <ContactBtn icon={<Phone className="size-5" />} label="Call" onClick={() => handleContact("call")} />
+   657→      </div>
+   658→      {notice && (
+   659→        <motion.div
+   660→          initial={{ opacity: 0, y: -5 }}
+   661→          animate={{ opacity: 1, y: 0 }}
+   662→          exit={{ opacity: 0 }}
+   663→          className="rounded-lg border border-info/40 bg-info/10 px-3 py-2 text-[11px] font-semibold text-info"
+   664→        >
+   665→          {notice}
+   666→        </motion.div>
+   667→      )}
+   668→      <div className="space-y-2">
+   669→        <p className="text-[10px] font-bold tracking-wide text-muted-foreground">FREQUENTLY ASKED QUESTIONS</p>
+   670→        {faqs.map((f, i) => (
+   671→          <div key={i} className="rounded-xl border border-border bg-card overflow-hidden">
+   672→            <button
+   673→              onClick={() => setOpen(open === i ? null : i)}
+   674→              className="flex w-full items-center justify-between gap-2 p-3 text-left"
+   675→            >
+   676→              <span className="text-xs font-bold">{f.q}</span>
+   677→              <ChevronRight className={`size-4 shrink-0 text-muted-foreground transition ${open === i ? "rotate-90" : ""}`} />
+   678→            </button>
+   679→            <AnimatePresence>
+   680→              {open === i && (
+   681→                <motion.div
+   682→                  initial={{ height: 0, opacity: 0 }}
+   683→                  animate={{ height: "auto", opacity: 1 }}
+   684→                  exit={{ height: 0, opacity: 0 }}
+   685→                  className="overflow-hidden"
+   686→                >
+   687→                  <p className="px-3 pb-3 text-xs text-muted-foreground">{f.a}</p>
+   688→                </motion.div>
+   689→              )}
+   690→            </AnimatePresence>
+   691→          </div>
+   692→        ))}
+   693→      </div>
+   694→    </div>
+   695→  )
+   696→}
+   697→
+   698→function ContactBtn({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+   699→  return (
+   700→    <button
+   701→      onClick={onClick}
+   702→      className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-card py-3 text-[10px] font-bold transition active:scale-95 hover:border-bull/40 hover:bg-bull/5"
+   703→    >
+   704→      <span className="text-bull">{icon}</span>
+   705→      {label}
+   706→    </button>
+   707→  )
+   708→}
+   709→

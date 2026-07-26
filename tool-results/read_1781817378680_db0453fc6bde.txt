@@ -1,0 +1,897 @@
+     1→"use client"
+     2→
+     3→import Image from "next/image"
+     4→import { useState } from "react"
+     5→import { motion, AnimatePresence } from "framer-motion"
+     6→import {
+     7→  ChevronRight,
+     8→  Trophy,
+     9→  Gift,
+    10→  Bell,
+    11→  Shield,
+    12→  HelpCircle,
+    13→  LogOut,
+    14→  Crown,
+    15→  Flame,
+    16→  Target,
+    17→  TrendingUp,
+    18→  Zap,
+    19→  Check,
+    20→  Loader2,
+    21→  X,
+    22→  Copy,
+    23→  Star,
+    24→  Medal,
+    25→  Award,
+    26→  Lock,
+    27→  MessageSquare,
+    28→  Mail,
+    29→  Phone,
+    30→  Globe,
+    31→  BellRing,
+    32→} from "lucide-react"
+    33→import { useCrypto } from "../store"
+    34→
+    35→type MenuModal = "achievements" | "refer" | "notifications" | "security" | "help" | "logout" | null
+    36→
+    37→const menu = [
+    38→  { id: "achievements" as const, icon: Trophy, label: "My Achievements" },
+    39→  { id: "refer" as const, icon: Gift, label: "Refer & Earn" },
+    40→  { id: "notifications" as const, icon: Bell, label: "Notifications" },
+    41→  { id: "security" as const, icon: Shield, label: "Security & KYC" },
+    42→  { id: "help" as const, icon: HelpCircle, label: "Help & Support" },
+    43→]
+    44→
+    45→export function ProfileScreen() {
+    46→  const {
+    47→    wins,
+    48→    totalBets,
+    49→    winRate,
+    50→    fmt,
+    51→    profit,
+    52→    winnings,
+    53→    balance,
+    54→    userName,
+    55→    userId,
+    56→    tier,
+    57→    dailyPredictions,
+    58→    dailyLimit,
+    59→    premiumExpiresAt,
+    60→    activatePremium,
+    61→    cancelPremium,
+    62→    logout,
+    63→    authMethod,
+    64→    email,
+    65→    phone,
+    66→  } = useCrypto()
+    67→  const [showPremiumModal, setShowPremiumModal] = useState(false)
+    68→  const [premiumLoading, setPremiumLoading] = useState(false)
+    69→  const [activeModal, setActiveModal] = useState<MenuModal>(null)
+    70→  const [logoutLoading, setLogoutLoading] = useState(false)
+    71→
+    72→  const isPremium = tier === "PREMIUM"
+    73→  const remainingToday = dailyLimit === -1 ? "∞" : `${Math.max(0, dailyLimit - dailyPredictions)}/${dailyLimit}`
+    74→
+    75→  const handleActivatePremium = async (plan: "monthly" | "yearly") => {
+    76→    setPremiumLoading(true)
+    77→    await activatePremium(plan)
+    78→    setPremiumLoading(false)
+    79→    setShowPremiumModal(false)
+    80→  }
+    81→
+    82→  const handleLogout = async () => {
+    83→    setLogoutLoading(true)
+    84→    await logout()
+    85→    setLogoutLoading(false)
+    86→  }
+    87→
+    88→  return (
+    89→    <motion.div
+    90→      className="flex flex-col gap-4 px-4 pb-4 pt-3"
+    91→      initial={{ opacity: 0 }}
+    92→      animate={{ opacity: 1 }}
+    93→      transition={{ duration: 0.3 }}
+    94→    >
+    95→      {/* Profile header */}
+    96→      <div className="flex flex-col items-center rounded-2xl border border-gold/30 bg-card p-5 text-center">
+    97→        <motion.span
+    98→          className="relative overflow-hidden rounded-full border-2 border-gold glow-gold"
+    99→          initial={{ scale: 0.8, opacity: 0 }}
+   100→          animate={{ scale: 1, opacity: 1 }}
+   101→          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+   102→        >
+   103→          <Image src="/images/winner-1.png" alt="Your avatar" width={80} height={80} className="size-20 object-cover" />
+   104→          {isPremium && (
+   105→            <span className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-gold text-black">
+   106→              <Crown className="size-3.5" />
+   107→            </span>
+   108→          )}
+   109→        </motion.span>
+   110→        <motion.h2
+   111→          className="mt-3 flex items-center gap-1.5 text-lg font-extrabold"
+   112→          initial={{ y: 10, opacity: 0 }}
+   113→          animate={{ y: 0, opacity: 1 }}
+   114→          transition={{ delay: 0.1 }}
+   115→        >
+   116→          {userName}
+   117→          {isPremium && <Crown className="size-4 text-gold" />}
+   118→        </motion.h2>
+   119→        <motion.p
+   120→          className="text-xs text-muted-foreground"
+   121→          initial={{ opacity: 0 }}
+   122→          animate={{ opacity: 1 }}
+   123→          transition={{ delay: 0.2 }}
+   124→        >
+   125→          ID: {userId?.slice(0, 8)}...
+   126→        </motion.p>
+   127→
+   128→        {/* Tier badge */}
+   129→        <motion.div
+   130→          initial={{ opacity: 0, y: 10 }}
+   131→          animate={{ opacity: 1, y: 0 }}
+   132→          transition={{ delay: 0.25 }}
+   133→          className={`mt-2 flex items-center gap-1.5 rounded-full px-3 py-1 ${
+   134→            isPremium ? "bg-gold/20 text-gold" : "bg-muted text-muted-foreground"
+   135→          }`}
+   136→        >
+   137→          {isPremium ? <Zap className="size-3" /> : <Target className="size-3" />}
+   138→          <span className="text-[10px] font-bold">{isPremium ? "PREMIUM" : "FREE TIER"}</span>
+   139→          {!isPremium && (
+   140→            <span className="text-[10px]">· {remainingToday} today</span>
+   141→          )}
+   142→        </motion.div>
+   143→
+   144→        {/* Stats grid */}
+   145→        <motion.div
+   146→          className="mt-4 grid w-full grid-cols-3 gap-2 border-t border-border pt-4"
+   147→          initial={{ y: 10, opacity: 0 }}
+   148→          animate={{ y: 0, opacity: 1 }}
+   149→          transition={{ delay: 0.3 }}
+   150→        >
+   151→          <div>
+   152→            <p className="text-lg font-bold text-bull">{wins}</p>
+   153→            <p className="text-[10px] text-muted-foreground">WINS</p>
+   154→          </div>
+   155→          <div>
+   156→            <p className="text-lg font-bold">{totalBets}</p>
+   157→            <p className="text-[10px] text-muted-foreground">TOTAL BETS</p>
+   158→          </div>
+   159→          <div>
+   160→            <p className="text-lg font-bold text-gold">{winRate}%</p>
+   161→            <p className="text-[10px] text-muted-foreground">WIN RATE</p>
+   162→          </div>
+   163→        </motion.div>
+   164→
+   165→        {/* Profit card */}
+   166→        <motion.div
+   167→          className="mt-3 grid w-full grid-cols-2 gap-2"
+   168→          initial={{ y: 10, opacity: 0 }}
+   169→          animate={{ y: 0, opacity: 1 }}
+   170→          transition={{ delay: 0.4 }}
+   171→        >
+   172→          <div className="flex items-center gap-2 rounded-lg border border-bull/20 bg-bull/5 px-3 py-2">
+   173→            <TrendingUp className="size-4 text-bull" />
+   174→            <div className="text-left">
+   175→              <p className="text-sm font-bold text-bull">{fmt(profit)}</p>
+   176→              <p className="text-[9px] text-muted-foreground">PROFIT</p>
+   177→            </div>
+   178→          </div>
+   179→          <div className="flex items-center gap-2 rounded-lg border border-gold/20 bg-gold/5 px-3 py-2">
+   180→            <Target className="size-4 text-gold" />
+   181→            <div className="text-left">
+   182→              <p className="text-sm font-bold">{fmt(winnings)}</p>
+   183→              <p className="text-[9px] text-muted-foreground">WINNINGS</p>
+   184→            </div>
+   185→          </div>
+   186→        </motion.div>
+   187→      </div>
+   188→
+   189→      {/* Premium Card */}
+   190→      {!isPremium ? (
+   191→        <motion.div
+   192→          className="overflow-hidden rounded-2xl border border-gold/40 bg-gradient-to-br from-gold/10 via-card to-card"
+   193→          initial={{ y: 10, opacity: 0 }}
+   194→          animate={{ y: 0, opacity: 1 }}
+   195→          transition={{ delay: 0.45 }}
+   196→        >
+   197→          <div className="p-4">
+   198→            <div className="mb-3 flex items-center gap-2">
+   199→              <Crown className="size-5 text-gold" />
+   200→              <h2 className="font-bold tracking-wide text-gold">UPGRADE TO PREMIUM</h2>
+   201→            </div>
+   202→            <div className="space-y-2 mb-4">
+   203→              <PremiumFeature icon={<Zap className="size-3.5 text-gold" />} text="Unlimited daily predictions" />
+   204→              <PremiumFeature icon={<Crown className="size-3.5 text-gold" />} text="No ads ever" />
+   205→              <PremiumFeature icon={<Trophy className="size-3.5 text-gold" />} text="Priority round access" />
+   206→              <PremiumFeature icon={<TrendingUp className="size-3.5 text-gold" />} text="Advanced AI insights" />
+   207→            </div>
+   208→            <motion.button
+   209→              onClick={() => setShowPremiumModal(true)}
+   210→              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gold py-3 text-sm font-bold text-black"
+   211→              whileTap={{ scale: 0.97 }}
+   212→            >
+   213→              <Crown className="size-4" /> UPGRADE NOW
+   214→            </motion.button>
+   215→            <p className="mt-2 text-center text-[9px] text-muted-foreground">Starting at $9.99/mo · Cancel anytime</p>
+   216→          </div>
+   217→        </motion.div>
+   218→      ) : (
+   219→        <motion.div
+   220→          className="overflow-hidden rounded-2xl border border-gold/40 bg-gradient-to-br from-gold/10 via-card to-card"
+   221→          initial={{ y: 10, opacity: 0 }}
+   222→          animate={{ y: 0, opacity: 1 }}
+   223→          transition={{ delay: 0.45 }}
+   224→        >
+   225→          <div className="p-4">
+   226→            <div className="mb-2 flex items-center gap-2">
+   227→              <Crown className="size-5 text-gold" />
+   228→              <h2 className="font-bold tracking-wide text-gold">PREMIUM ACTIVE</h2>
+   229→            </div>
+   230→            {premiumExpiresAt && (
+   231→              <p className="text-xs text-muted-foreground">
+   232→                Expires: {new Date(premiumExpiresAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+   233→              </p>
+   234→            )}
+   235→            <div className="mt-3 space-y-2">
+   236→              <PremiumFeature icon={<Check className="size-3.5 text-bull" />} text="Unlimited predictions ✓" />
+   237→              <PremiumFeature icon={<Check className="size-3.5 text-bull" />} text="No ads ✓" />
+   238→              <PremiumFeature icon={<Check className="size-3.5 text-bull" />} text="Priority access ✓" />
+   239→            </div>
+   240→            <motion.button
+   241→              onClick={cancelPremium}
+   242→              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card py-2.5 text-xs font-semibold text-muted-foreground"
+   243→              whileTap={{ scale: 0.97 }}
+   244→            >
+   245→              Cancel Subscription
+   246→            </motion.button>
+   247→          </div>
+   248→        </motion.div>
+   249→      )}
+   250→
+   251→      {/* Performance card */}
+   252→      <motion.div
+   253→        className="rounded-2xl border border-border bg-card p-4"
+   254→        initial={{ y: 10, opacity: 0 }}
+   255→        animate={{ y: 0, opacity: 1 }}
+   256→        transition={{ delay: 0.5 }}
+   257→      >
+   258→        <div className="mb-3 flex items-center gap-2">
+   259→          <Target className="size-5 text-bull" />
+   260→          <h2 className="font-bold tracking-wide">PERFORMANCE</h2>
+   261→        </div>
+   262→        <div className="grid grid-cols-2 gap-3">
+   263→          <div className="rounded-xl border border-border bg-panel p-3 text-center">
+   264→            <p className="text-lg font-bold text-bull">{fmt(winnings)}</p>
+   265→            <p className="text-[10px] text-muted-foreground">TOTAL WINNINGS</p>
+   266→          </div>
+   267→          <div className="rounded-xl border border-border bg-panel p-3 text-center">
+   268→            <p className="text-lg font-bold">{fmt(balance, 2)}</p>
+   269→            <p className="text-[10px] text-muted-foreground">CURRENT BALANCE</p>
+   270→          </div>
+   271→        </div>
+   272→        {/* Win rate bar */}
+   273→        <div className="mt-3">
+   274→          <div className="mb-1 flex items-center justify-between text-[10px]">
+   275→            <span className="font-semibold text-muted-foreground">WIN RATE</span>
+   276→            <span className="font-bold text-bull">{winRate}%</span>
+   277→          </div>
+   278→          <div className="h-2 overflow-hidden rounded-full bg-muted">
+   279→            <motion.div
+   280→              className="h-full rounded-full bg-bull"
+   281→              initial={{ width: 0 }}
+   282→              animate={{ width: `${winRate}%` }}
+   283→              transition={{ duration: 1, delay: 0.6, ease: "easeOut" }}
+   284→            />
+   285→          </div>
+   286→        </div>
+   287→      </motion.div>
+   288→
+   289→      {/* Menu */}
+   290→      <motion.div
+   291→        className="overflow-hidden rounded-2xl border border-border bg-card"
+   292→        initial={{ y: 10, opacity: 0 }}
+   293→        animate={{ y: 0, opacity: 1 }}
+   294→        transition={{ delay: 0.6 }}
+   295→      >
+   296→        {menu.map((m, i) => (
+   297→          <button
+   298→            key={m.label}
+   299→            onClick={() => setActiveModal(m.id)}
+   300→            className={`flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm font-semibold transition active:bg-muted/50 ${
+   301→              i !== menu.length - 1 ? "border-b border-border/60" : ""
+   302→            }`}
+   303→          >
+   304→            <m.icon className="size-5 text-muted-foreground" />
+   305→            <span className="flex-1">{m.label}</span>
+   306→            <ChevronRight className="size-4 text-muted-foreground" />
+   307→          </button>
+   308→        ))}
+   309→      </motion.div>
+   310→
+   311→      <motion.button
+   312→        onClick={handleLogout}
+   313→        disabled={logoutLoading}
+   314→        className="flex items-center justify-center gap-2 rounded-2xl border border-bear/40 bg-bear/10 py-3.5 text-sm font-bold text-bear disabled:opacity-60"
+   315→        whileTap={{ scale: 0.97 }}
+   316→        initial={{ opacity: 0 }}
+   317→        animate={{ opacity: 1 }}
+   318→        transition={{ delay: 0.7 }}
+   319→      >
+   320→        {logoutLoading ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
+   321→        LOG OUT
+   322→      </motion.button>
+   323→
+   324→      {/* Premium Purchase Modal */}
+   325→      <AnimatePresence>
+   326→        {showPremiumModal && (
+   327→          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={() => setShowPremiumModal(false)}>
+   328→            <motion.div
+   329→              className="mx-auto w-full max-w-sm overflow-hidden rounded-2xl border border-gold/40 bg-panel"
+   330→              onClick={(e) => e.stopPropagation()}
+   331→              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+   332→              animate={{ opacity: 1, scale: 1, y: 0 }}
+   333→              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+   334→              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+   335→            >
+   336→              <div className="relative bg-gradient-to-br from-gold/20 via-gold/10 to-transparent p-6 text-center">
+   337→                <motion.div
+   338→                  initial={{ scale: 0 }}
+   339→                  animate={{ scale: 1 }}
+   340→                  transition={{ type: "spring", delay: 0.1 }}
+   341→                  className="mx-auto flex size-16 items-center justify-center rounded-full bg-gold/20"
+   342→                >
+   343→                  <Crown className="size-8 text-gold" />
+   344→                </motion.div>
+   345→                <h3 className="mt-3 text-xl font-extrabold text-gold">GO PREMIUM</h3>
+   346→                <p className="mt-1 text-xs text-muted-foreground">Unlock unlimited predictions & more</p>
+   347→              </div>
+   348→
+   349→              <div className="p-4 space-y-3">
+   350→                <PremiumFeature icon={<Zap className="size-4 text-gold" />} text="Unlimited daily predictions" />
+   351→                <PremiumFeature icon={<Crown className="size-4 text-gold" />} text="Ad-free experience" />
+   352→                <PremiumFeature icon={<Trophy className="size-4 text-gold" />} text="Priority round access" />
+   353→                <PremiumFeature icon={<TrendingUp className="size-4 text-gold" />} text="Advanced AI market insights" />
+   354→                <PremiumFeature icon={<Flame className="size-4 text-gold" />} text="1.8x payout multiplier" />
+   355→              </div>
+   356→
+   357→              <div className="px-4 pb-2 space-y-2">
+   358→                <motion.button
+   359→                  onClick={() => handleActivatePremium("monthly")}
+   360→                  disabled={premiumLoading}
+   361→                  className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3.5 transition disabled:opacity-60"
+   362→                  whileTap={{ scale: 0.97 }}
+   363→                >
+   364→                  <div>
+   365→                    <p className="font-bold">Monthly</p>
+   366→                    <p className="text-xs text-muted-foreground">Cancel anytime</p>
+   367→                  </div>
+   368→                  <div className="flex items-center gap-2">
+   369→                    <span className="text-lg font-extrabold text-bull">$9.99/mo</span>
+   370→                    {premiumLoading && <Loader2 className="size-4 animate-spin text-gold" />}
+   371→                  </div>
+   372→                </motion.button>
+   373→                <motion.button
+   374→                  onClick={() => handleActivatePremium("yearly")}
+   375→                  disabled={premiumLoading}
+   376→                  className="relative flex w-full items-center justify-between rounded-xl border border-gold/50 bg-gold/10 px-4 py-3.5 transition disabled:opacity-60"
+   377→                  whileTap={{ scale: 0.97 }}
+   378→                >
+   379→                  <span className="absolute -top-2 right-3 rounded-md bg-gold px-2 py-0.5 text-[9px] font-bold text-black">SAVE 33%</span>
+   380→                  <div>
+   381→                    <p className="font-bold">Yearly</p>
+   382→                    <p className="text-xs text-muted-foreground">Best value · $6.67/mo</p>
+   383→                  </div>
+   384→                  <div className="flex items-center gap-2">
+   385→                    <span className="text-lg font-extrabold text-bull">$79.99/yr</span>
+   386→                    {premiumLoading && <Loader2 className="size-4 animate-spin text-gold" />}
+   387→                  </div>
+   388→                </motion.button>
+   389→              </div>
+   390→
+   391→              <div className="p-4 pt-2 text-center">
+   392→                <button
+   393→                  onClick={() => setShowPremiumModal(false)}
+   394→                  className="text-xs text-muted-foreground hover:text-foreground transition"
+   395→                >
+   396→                  Maybe later
+   397→                </button>
+   398→              </div>
+   399→            </motion.div>
+   400→          </div>
+   401→        )}
+   402→      </AnimatePresence>
+   403→
+   404→      {/* Menu modals */}
+   405→      <AnimatePresence>
+   406→        {activeModal && (
+   407→          <MenuModalWrapper
+   408→            onClose={() => setActiveModal(null)}
+   409→            modal={activeModal}
+   410→            userName={userName}
+   411→            userId={userId}
+   412→            wins={wins}
+   413→            totalBets={totalBets}
+   414→            winRate={winRate}
+   415→            isPremium={isPremium}
+   416→            authMethod={authMethod}
+   417→            email={email}
+   418→            phone={phone}
+   419→          />
+   420→        )}
+   421→      </AnimatePresence>
+   422→    </motion.div>
+   423→  )
+   424→}
+   425→
+   426→function MenuModalWrapper({
+   427→  onClose,
+   428→  modal,
+   429→  userName,
+   430→  userId,
+   431→  wins,
+   432→  totalBets,
+   433→  winRate,
+   434→  isPremium,
+   435→  authMethod,
+   436→  email,
+   437→  phone,
+   438→}: {
+   439→  onClose: () => void
+   440→  modal: Exclude<MenuModal, null>
+   441→  userName: string
+   442→  userId: string | null
+   443→  wins: number
+   444→  totalBets: number
+   445→  winRate: number
+   446→  isPremium: boolean
+   447→  authMethod: string | null
+   448→  email: string | null
+   449→  phone: string | null
+   450→}) {
+   451→  return (
+   452→    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 sm:items-center" onClick={onClose}>
+   453→      <motion.div
+   454→        className="mx-auto w-full max-w-md rounded-t-2xl border border-border bg-panel p-5 pb-8 sm:rounded-2xl"
+   455→        onClick={(e) => e.stopPropagation()}
+   456→        initial={{ y: "100%", opacity: 0 }}
+   457→        animate={{ y: 0, opacity: 1 }}
+   458→        exit={{ y: "100%", opacity: 0 }}
+   459→        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+   460→      >
+   461→        <div className="mb-4 flex items-center justify-between">
+   462→          <ModalTitle modal={modal} />
+   463→          <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">
+   464→            <X className="size-5" />
+   465→          </button>
+   466→        </div>
+   467→        <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
+   468→          {modal === "achievements" && <AchievementsContent wins={wins} totalBets={totalBets} winRate={winRate} isPremium={isPremium} />}
+   469→          {modal === "refer" && <ReferContent userName={userName} userId={userId} />}
+   470→          {modal === "notifications" && <NotificationsContent />}
+   471→          {modal === "security" && <SecurityContent authMethod={authMethod} email={email} phone={phone} isPremium={isPremium} />}
+   472→          {modal === "help" && <HelpContent />}
+   473→        </div>
+   474→      </motion.div>
+   475→    </div>
+   476→  )
+   477→}
+   478→
+   479→function ModalTitle({ modal }: { modal: Exclude<MenuModal, null> }) {
+   480→  const map = {
+   481→    achievements: { icon: Trophy, label: "Achievements" },
+   482→    refer: { icon: Gift, label: "Refer & Earn" },
+   483→    notifications: { icon: Bell, label: "Notifications" },
+   484→    security: { icon: Shield, label: "Security & KYC" },
+   485→    help: { icon: HelpCircle, label: "Help & Support" },
+   486→    logout: { icon: LogOut, label: "Log Out" },
+   487→  } as const
+   488→  const { icon: Icon, label } = map[modal]
+   489→  return (
+   490→    <div className="flex items-center gap-2">
+   491→      <Icon className="size-5 text-bull" />
+   492→      <h3 className="font-bold tracking-wide">{label.toUpperCase()}</h3>
+   493→    </div>
+   494→  )
+   495→}
+   496→
+   497→function AchievementsContent({ wins, totalBets, winRate, isPremium }: { wins: number; totalBets: number; winRate: number; isPremium: boolean }) {
+   498→  const achievements = [
+   499→    { icon: Medal, label: "First Win", desc: "Win your first prediction", unlocked: wins >= 1, color: "text-bull" },
+   500→    { icon: Flame, label: "Hot Streak", desc: "Win 5 predictions", unlocked: wins >= 5, color: "text-gold" },
+   501→    { icon: Trophy, label: "Champion", desc: "Win 25 predictions", unlocked: wins >= 25, color: "text-gold" },
+   502→    { icon: Star, label: "Rising Star", desc: "Place 10 bets", unlocked: totalBets >= 10, color: "text-info" },
+   503→    { icon: Award, label: "Veteran", desc: "Place 100 bets", unlocked: totalBets >= 100, color: "text-bull" },
+   504→    { icon: Target, label: "Sharp Shooter", desc: "Reach 60% win rate", unlocked: winRate >= 60, color: "text-bull" },
+   505→    { icon: Crown, label: "Premium Member", desc: "Upgrade to Premium", unlocked: isPremium, color: "text-gold" },
+   506→    { icon: Zap, label: "High Roller", desc: "Place 500 bets", unlocked: totalBets >= 500, color: "text-gold" },
+   507→  ]
+   508→  return (
+   509→    <div className="grid grid-cols-2 gap-3">
+   510→      {achievements.map((a) => (
+   511→        <div
+   512→          key={a.label}
+   513→          className={`rounded-xl border p-3 text-center transition ${
+   514→            a.unlocked ? "border-bull/30 bg-bull/5" : "border-border bg-muted/30 opacity-60"
+   515→          }`}
+   516→        >
+   517→          <a.icon className={`mx-auto size-7 ${a.unlocked ? a.color : "text-muted-foreground"}`} />
+   518→          <p className="mt-1.5 text-xs font-bold">{a.label}</p>
+   519→          <p className="mt-0.5 text-[10px] text-muted-foreground">{a.desc}</p>
+   520→          {a.unlocked && (
+   521→            <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-bull/20 px-2 py-0.5 text-[9px] font-bold text-bull">
+   522→              <Check className="size-2.5" /> UNLOCKED
+   523→            </span>
+   524→          )}
+   525→        </div>
+   526→      ))}
+   527→    </div>
+   528→  )
+   529→}
+   530→
+   531→function ReferContent({ userName, userId }: { userName: string; userId: string | null }) {
+   532→  const referralCode = userId ? `CP${userId.slice(0, 6).toUpperCase()}` : "CPDEMO01"
+   533→  const referralLink = `https://cryptopredictor.app/r/${referralCode}`
+   534→  const [copied, setCopied] = useState(false)
+   535→  const [shareStatus, setShareStatus] = useState<string | null>(null)
+   536→
+   537→  const handleCopy = () => {
+   538→    navigator.clipboard?.writeText(referralLink).catch(() => {})
+   539→    setCopied(true)
+   540→    setTimeout(() => setCopied(false), 2000)
+   541→  }
+   542→
+   543→  const handleShare = (platform: "whatsapp" | "telegram" | "more") => {
+   544→    const text = `🚀 Join me on PredicTX and get ₹10,000 welcome bonus! Use my referral code ${referralCode}. ${referralLink}`
+   545→    try {
+   546→      if (platform === "whatsapp") {
+   547→        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
+   548→      } else if (platform === "telegram") {
+   549→        window.open(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(text)}`, "_blank")
+   550→      } else {
+   551→        // Use native share sheet if available, otherwise copy
+   552→        if (navigator.share) {
+   553→          navigator.share({ title: "PredicTX", text, url: referralLink }).catch(() => {})
+   554→        } else {
+   555→          navigator.clipboard?.writeText(text).catch(() => {})
+   556→          setShareStatus("Link copied to clipboard")
+   557→          setTimeout(() => setShareStatus(null), 2000)
+   558→        }
+   559→      }
+   560→    } catch {
+   561→      setShareStatus("Unable to share — link copied instead")
+   562→      navigator.clipboard?.writeText(referralLink).catch(() => {})
+   563→      setTimeout(() => setShareStatus(null), 2000)
+   564→    }
+   565→  }
+   566→
+   567→  return (
+   568→    <div className="space-y-4">
+   569→      <div className="rounded-xl border border-gold/30 bg-gradient-to-br from-gold/10 to-transparent p-4 text-center">
+   570→        <Gift className="mx-auto size-10 text-gold" />
+   571→        <h4 className="mt-2 text-base font-extrabold text-gold">Earn ₹2,000 per friend!</h4>
+   572→        <p className="mt-1 text-xs text-muted-foreground">
+   573→          Get ₹2,000 when your friend makes their first deposit. They get ₹1,000 too!
+   574→        </p>
+   575→      </div>
+   576→      <div>
+   577→        <p className="mb-1 text-[10px] font-bold tracking-wide text-muted-foreground">YOUR REFERRAL CODE</p>
+   578→        <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
+   579→          <span className="flex-1 font-mono text-sm font-bold tracking-wider text-bull">{referralCode}</span>
+   580→          <button
+   581→            onClick={handleCopy}
+   582→            className="rounded-md bg-bull/20 px-2.5 py-1.5 text-[10px] font-bold text-bull active:scale-95 transition"
+   583→            aria-label="Copy referral code"
+   584→          >
+   585→            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+   586→          </button>
+   587→        </div>
+   588→      </div>
+   589→      <div>
+   590→        <p className="mb-1 text-[10px] font-bold tracking-wide text-muted-foreground">SHARE LINK</p>
+   591→        <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
+   592→          <span className="flex-1 truncate text-xs text-muted-foreground">{referralLink}</span>
+   593→          <button
+   594→            onClick={handleCopy}
+   595→            className="rounded-md bg-info/20 px-2.5 py-1.5 text-[10px] font-bold text-info active:scale-95 transition"
+   596→          >
+   597→            {copied ? "COPIED" : "COPY"}
+   598→          </button>
+   599→        </div>
+   600→      </div>
+   601→      {shareStatus && (
+   602→        <p className="text-center text-[10px] font-semibold text-bull">{shareStatus}</p>
+   603→      )}
+   604→      <div className="grid grid-cols-3 gap-2">
+   605→        <ShareBtn label="WhatsApp" emoji="💬" onClick={() => handleShare("whatsapp")} />
+   606→        <ShareBtn label="Telegram" emoji="✈️" onClick={() => handleShare("telegram")} />
+   607→        <ShareBtn label="More" emoji="⋯" onClick={() => handleShare("more")} />
+   608→      </div>
+   609→      <div className="rounded-xl border border-border bg-card p-3 text-center">
+   610→        <p className="text-[10px] text-muted-foreground">FRIENDS JOINED</p>
+   611→        <p className="text-2xl font-extrabold text-bull">0</p>
+   612→        <p className="text-[10px] text-muted-foreground">Total earned: ₹0</p>
+   613→      </div>
+   614→    </div>
+   615→  )
+   616→}
+   617→
+   618→function ShareBtn({ label, emoji, onClick }: { label: string; emoji: string; onClick: () => void }) {
+   619→  return (
+   620→    <button
+   621→      onClick={onClick}
+   622→      className="flex flex-col items-center gap-1 rounded-xl border border-border bg-card py-2.5 text-[10px] font-bold transition active:scale-95 hover:border-bull/40 hover:bg-bull/5"
+   623→    >
+   624→      <span className="text-lg">{emoji}</span>
+   625→      {label}
+   626→    </button>
+   627→  )
+   628→}
+   629→
+   630→function NotificationsContent() {
+   631→  const [settings, setSettings] = useState({
+   632→    wins: true,
+   633→    losses: false,
+   634→    deposits: true,
+   635→    withdrawals: true,
+   636→    promotions: true,
+   637→    news: false,
+   638→    priceAlerts: true,
+   639→  })
+   640→  const toggle = (key: keyof typeof settings) =>
+   641→    setSettings((s) => ({ ...s, [key]: !s[key] }))
+   642→  const items = [
+   643→    { key: "wins" as const, icon: Trophy, label: "Win notifications", desc: "Get notified when you win" },
+   644→    { key: "losses" as const, icon: Target, label: "Loss notifications", desc: "Get notified when you lose" },
+   645→    { key: "deposits" as const, icon: TrendingUp, label: "Deposit confirmations", desc: "When deposits are credited" },
+   646→    { key: "withdrawals" as const, icon: Zap, label: "Withdrawal updates", desc: "When withdrawals are processed" },
+   647→    { key: "promotions" as const, icon: Gift, label: "Promotions & offers", desc: "Special bonus offers" },
+   648→    { key: "news" as const, icon: Globe, label: "Crypto news", desc: "Breaking market news" },
+   649→    { key: "priceAlerts" as const, icon: BellRing, label: "Price alerts", desc: "BTC, ETH, SOL price moves" },
+   650→  ]
+   651→  return (
+   652→    <div className="space-y-2">
+   653→      {items.map((item) => (
+   654→        <div key={item.key} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+   655→          <item.icon className="size-5 text-muted-foreground" />
+   656→          <div className="flex-1">
+   657→            <p className="text-sm font-bold">{item.label}</p>
+   658→            <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+   659→          </div>
+   660→          <button
+   661→            onClick={() => toggle(item.key)}
+   662→            className={`relative h-6 w-11 rounded-full transition ${
+   663→              settings[item.key] ? "bg-bull" : "bg-muted"
+   664→            }`}
+   665→            aria-label={`Toggle ${item.label}`}
+   666→          >
+   667→            <motion.span
+   668→              layout
+   669→              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+   670→              className={`absolute top-0.5 size-5 rounded-full bg-white shadow ${
+   671→                settings[item.key] ? "right-0.5" : "left-0.5"
+   672→              }`}
+   673→            />
+   674→          </button>
+   675→        </div>
+   676→      ))}
+   677→    </div>
+   678→  )
+   679→}
+   680→
+   681→function SecurityContent({
+   682→  authMethod,
+   683→  email,
+   684→  phone,
+   685→  isPremium,
+   686→}: {
+   687→  authMethod: string | null
+   688→  email: string | null
+   689→  phone: string | null
+   690→  isPremium: boolean
+   691→}) {
+   692→  const authLabel =
+   693→    authMethod === "google" ? "Google Account" :
+   694→    authMethod === "phone" ? "Phone Number" :
+   695→    authMethod === "email" ? "Email & Password" :
+   696→    "Guest"
+   697→  const [notice, setNotice] = useState<string | null>(null)
+   698→  const [twoFAEnabled, setTwoFAEnabled] = useState(false)
+   699→
+   700→  const flashNotice = (msg: string) => {
+   701→    setNotice(msg)
+   702→    setTimeout(() => setNotice(null), 2500)
+   703→  }
+   704→
+   705→  const handleChangePassword = () => {
+   706→    if (authMethod === "google" || authMethod === "phone") {
+   707→      flashNotice(`Password not used — you sign in via ${authLabel}.`)
+   708→    } else if (email) {
+   709→      flashNotice(`Password reset link sent to ${email}`)
+   710→    } else {
+   711→      flashNotice("Add an email to your account first to change password.")
+   712→    }
+   713→  }
+   714→
+   715→  const handleToggle2FA = () => {
+   716→    if (twoFAEnabled) {
+   717→      setTwoFAEnabled(false)
+   718→      flashNotice("Two-Factor Authentication disabled.")
+   719→    } else {
+   720→      setTwoFAEnabled(true)
+   721→      flashNotice("Two-Factor Authentication enabled — extra security active!")
+   722→    }
+   723→  }
+   724→
+   725→  return (
+   726→    <div className="space-y-3">
+   727→      <div className="rounded-xl border border-bull/30 bg-bull/5 p-3">
+   728→        <div className="flex items-center gap-2">
+   729→          <Shield className="size-5 text-bull" />
+   730→          <p className="text-sm font-bold text-bull">Account Verified</p>
+   731→        </div>
+   732→        <p className="mt-1 text-[10px] text-muted-foreground">
+   733→          Your account is verified via {authLabel}.
+   734→        </p>
+   735→      </div>
+   736→
+   737→      <div className="rounded-xl border border-border bg-card p-3">
+   738→        <p className="mb-2 text-[10px] font-bold tracking-wide text-muted-foreground">ACCOUNT DETAILS</p>
+   739→        <DetailRow icon={<Mail className="size-4 text-muted-foreground" />} label="Email" value={email || "Not set"} />
+   740→        <DetailRow icon={<Phone className="size-4 text-muted-foreground" />} label="Phone" value={phone || "Not set"} />
+   741→        <DetailRow icon={<Lock className="size-4 text-muted-foreground" />} label="Sign-in method" value={authLabel} />
+   742→        <DetailRow icon={<Crown className="size-4 text-muted-foreground" />} label="Plan" value={isPremium ? "Premium" : "Free"} />
+   743→      </div>
+   744→
+   745→      <div className="rounded-xl border border-gold/30 bg-gold/5 p-3">
+   746→        <div className="flex items-center gap-2">
+   747→          <Lock className="size-5 text-gold" />
+   748→          <p className="text-sm font-bold text-gold">KYC Status: Verified</p>
+   749→        </div>
+   750→        <p className="mt-1 text-[10px] text-muted-foreground">
+   751→          Your identity has been verified. Withdrawal limit: ₹50,000/day.
+   752→        </p>
+   753→      </div>
+   754→
+   755→      {notice && (
+   756→        <motion.div
+   757→          initial={{ opacity: 0, y: -5 }}
+   758→          animate={{ opacity: 1, y: 0 }}
+   759→          exit={{ opacity: 0 }}
+   760→          className="rounded-lg border border-info/40 bg-info/10 px-3 py-2 text-[11px] font-semibold text-info"
+   761→        >
+   762→          {notice}
+   763→        </motion.div>
+   764→      )}
+   765→
+   766→      <motion.button
+   767→        onClick={handleChangePassword}
+   768→        whileTap={{ scale: 0.97 }}
+   769→        className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card py-3 text-xs font-bold text-muted-foreground hover:border-bull/40 hover:text-bull transition"
+   770→      >
+   771→        <Shield className="size-4" /> Change Password
+   772→      </motion.button>
+   773→      <motion.button
+   774→        onClick={handleToggle2FA}
+   775→        whileTap={{ scale: 0.97 }}
+   776→        className={`flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-xs font-bold transition ${
+   777→          twoFAEnabled
+   778→            ? "border-bull/40 bg-bull/10 text-bull"
+   779→            : "border-border bg-card text-muted-foreground hover:border-gold/40 hover:text-gold"
+   780→        }`}
+   781→      >
+   782→        <Lock className="size-4" />
+   783→        {twoFAEnabled ? "Two-Factor Authentication: ON" : "Enable Two-Factor Authentication"}
+   784→      </motion.button>
+   785→    </div>
+   786→  )
+   787→}
+   788→
+   789→function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+   790→  return (
+   791→    <div className="flex items-center gap-2 border-b border-border/40 py-2 last:border-0">
+   792→      {icon}
+   793→      <span className="flex-1 text-xs text-muted-foreground">{label}</span>
+   794→      <span className="text-xs font-semibold">{value}</span>
+   795→    </div>
+   796→  )
+   797→}
+   798→
+   799→function HelpContent() {
+   800→  const faqs = [
+   801→    { q: "How do I place a prediction?", a: "Go to the Predict tab, select time & amount, then tap UP or DOWN. Max 3 taps to place a bet!" },
+   802→    { q: "How are winners decided?", a: "If you predict UP and the price goes up by the end of the round, you win 1.8x your stake." },
+   803→    { q: "How do I withdraw my winnings?", a: "Go to the Wallet tab, tap Withdraw, enter the amount, and choose your payment method. Withdrawals are instant." },
+   804→    { q: "What is the daily limit?", a: "Free users get 3 predictions per day. Upgrade to Premium for unlimited predictions." },
+   805→    { q: "Is my money safe?", a: "Yes — all funds are held securely and transactions are encrypted. We use bank-grade security." },
+   806→  ]
+   807→  const [open, setOpen] = useState<number | null>(0)
+   808→  const [notice, setNotice] = useState<string | null>(null)
+   809→
+   810→  const flashNotice = (msg: string) => {
+   811→    setNotice(msg)
+   812→    setTimeout(() => setNotice(null), 2500)
+   813→  }
+   814→
+   815→  const handleContact = (type: "chat" | "email" | "call") => {
+   816→    if (type === "chat") {
+   817→      flashNotice("Live chat opening — agent will join in under 5 min.")
+   818→    } else if (type === "email") {
+   819→      window.location.href = "mailto:support@cryptopredictor.app?subject=Help%20Request"
+   820→      flashNotice("Opening your email app...")
+   821→    } else {
+   822→      flashNotice("Calling support: +91 1800-123-4567")
+   823→    }
+   824→  }
+   825→
+   826→  return (
+   827→    <div className="space-y-3">
+   828→      <div className="rounded-xl border border-info/30 bg-info/5 p-3">
+   829→        <p className="text-xs font-bold text-info">Need help? We're here 24/7</p>
+   830→        <p className="mt-0.5 text-[10px] text-muted-foreground">Average response time: under 5 minutes</p>
+   831→      </div>
+   832→      <div className="grid grid-cols-3 gap-2">
+   833→        <ContactBtn icon={<MessageSquare className="size-5" />} label="Live Chat" onClick={() => handleContact("chat")} />
+   834→        <ContactBtn icon={<Mail className="size-5" />} label="Email" onClick={() => handleContact("email")} />
+   835→        <ContactBtn icon={<Phone className="size-5" />} label="Call" onClick={() => handleContact("call")} />
+   836→      </div>
+   837→      {notice && (
+   838→        <motion.div
+   839→          initial={{ opacity: 0, y: -5 }}
+   840→          animate={{ opacity: 1, y: 0 }}
+   841→          exit={{ opacity: 0 }}
+   842→          className="rounded-lg border border-info/40 bg-info/10 px-3 py-2 text-[11px] font-semibold text-info"
+   843→        >
+   844→          {notice}
+   845→        </motion.div>
+   846→      )}
+   847→      <div className="space-y-2">
+   848→        <p className="text-[10px] font-bold tracking-wide text-muted-foreground">FREQUENTLY ASKED QUESTIONS</p>
+   849→        {faqs.map((f, i) => (
+   850→          <div key={i} className="rounded-xl border border-border bg-card overflow-hidden">
+   851→            <button
+   852→              onClick={() => setOpen(open === i ? null : i)}
+   853→              className="flex w-full items-center justify-between gap-2 p-3 text-left"
+   854→            >
+   855→              <span className="text-xs font-bold">{f.q}</span>
+   856→              <ChevronRight className={`size-4 shrink-0 text-muted-foreground transition ${open === i ? "rotate-90" : ""}`} />
+   857→            </button>
+   858→            <AnimatePresence>
+   859→              {open === i && (
+   860→                <motion.div
+   861→                  initial={{ height: 0, opacity: 0 }}
+   862→                  animate={{ height: "auto", opacity: 1 }}
+   863→                  exit={{ height: 0, opacity: 0 }}
+   864→                  className="overflow-hidden"
+   865→                >
+   866→                  <p className="px-3 pb-3 text-xs text-muted-foreground">{f.a}</p>
+   867→                </motion.div>
+   868→              )}
+   869→            </AnimatePresence>
+   870→          </div>
+   871→        ))}
+   872→      </div>
+   873→    </div>
+   874→  )
+   875→}
+   876→
+   877→function ContactBtn({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+   878→  return (
+   879→    <button
+   880→      onClick={onClick}
+   881→      className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-card py-3 text-[10px] font-bold transition active:scale-95 hover:border-bull/40 hover:bg-bull/5"
+   882→    >
+   883→      <span className="text-bull">{icon}</span>
+   884→      {label}
+   885→    </button>
+   886→  )
+   887→}
+   888→
+   889→function PremiumFeature({ icon, text }: { icon: React.ReactNode; text: string }) {
+   890→  return (
+   891→    <div className="flex items-center gap-3 text-sm">
+   892→      {icon}
+   893→      <span className="font-semibold">{text}</span>
+   894→    </div>
+   895→  )
+   896→}
+   897→
